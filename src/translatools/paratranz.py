@@ -25,11 +25,13 @@ class Paratranz:
 
     def put_file(self, paratranz_project_id: int, path: Path, relative_path: Path):
         url = f"{BASE_URL}/projects/{paratranz_project_id}/files"
-        resp = requests.post(url, headers={"Authorization": f"Bearer {self.token}"}, files={"file": open(path, "r")},
+        resp = requests.post(url, headers={"Authorization": f"Bearer {self.token}"},
+                             files={"file": open(path, encoding="utf-8")},
                              data={"path": relative_path.parent.as_posix(), "filename": relative_path.name})
         resp.raise_for_status()
 
     def update_file(self, paratranz_project_id: int, file_id: str, path: Path):
         url = f"{BASE_URL}/projects/{paratranz_project_id}/files/{file_id}"
-        resp = requests.post(url, headers={"Authorization": f"Bearer {self.token}"}, files={"file": open(path, "r")})
+        resp = requests.post(url, headers={"Authorization": f"Bearer {self.token}"},
+                             files={"file": open(path, encoding="utf-8")})
         resp.raise_for_status()
