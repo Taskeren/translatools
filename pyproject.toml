@@ -1,0 +1,21 @@
+[project]
+name = "translatools"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Taskeren", email = "r0yalist@outlook.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "cursefetch==0.2.1",
+    "dacite>=1.9.2",
+    "ftb-snbt-lib>=0.4.1",
+]
+
+[project.scripts]
+translatools = "translatools:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
