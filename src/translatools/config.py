@@ -3,6 +3,7 @@ import json
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import Optional
 
 import dacite
 import ftb_snbt_lib
@@ -67,19 +68,21 @@ class TranslatoolsMetadata:
     # the tracked flat key-value-paired JSON files, relative to the configuration file, glob supported
     # deprecated
     # TODO: REMOVE
-    tracked_json_paths: list[str] | None = field(default=None)
+    tracked_json_paths: Optional[list[str]] = field(default=None)
     # the tracked Mojang-flavored LANG files, relative to the configuration file, glob supported
     # deprecated
     # TODO: REMOVE
-    tracked_lang_paths: list[str] | None = field(default=None)
+    tracked_lang_paths: Optional[list[str]] = field(default=None)
     # true to enable support for FTBQuests
     # but if somehow the modpack doesn't contain FTB Quests, or the contents are already localization-friendly,
     # set it to false.
     # deprecated
     # TODO: REMOVE
-    ftbquests: bool | None = None
+    ftbquests: Optional[bool] = field(default=None)
     # the tracked files
     tracked_files: list[TrackedFile] = field(default_factory=list)
+    # dotenv name
+    dotenv_name: Optional[str] = field(default=None)
 
     @staticmethod
     def load_from_path(path: Path) -> "TranslatoolsMetadata":

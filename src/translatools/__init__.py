@@ -17,7 +17,9 @@ from translatools.translatools import Translatools
 def main() -> None:
     print("Hello from translatools!")
 
-    load_dotenv()
+    # don't load_dotenv() here, because we will load the dotenv in the Translatools constructor,
+    # so that we can properly load the dotenv file in the same directory of the configuration file.
+    # load_dotenv()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="The configuration of the instance.", default="config.json")

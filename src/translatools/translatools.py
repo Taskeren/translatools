@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Iterable
 
 import cursefetch
+from dotenv import load_dotenv
 from tqdm import tqdm
 
 from translatools import TranslatoolsMetadata, Paratranz
@@ -17,6 +18,8 @@ class Translatools:
     def __init__(self, config: TranslatoolsMetadata, conf_path: Path):
         self.config = config
         self._conf_path = conf_path
+        # load the dotenv in the ctor
+        self._load_dotenv()
 
     def __str__(self):
         return "Translatools(" + str(self.config) + ", conf_path=" + str(self._conf_path) + ")"
@@ -26,6 +29,15 @@ class Translatools:
 
     def save_config(self):
         TranslatoolsMetadata.write_to_path(self._conf_path, self.config)
+
+    def _load_dotenv(self):
+        dotenv_name = self.config.dotenv_name
+        if dotenv_name is None:
+            dotenv_name = ".env"
+        dotenv_path = self.cwd() / dotenv_name
+        if dotenv_path.exists():
+            print(f"Loading dotenv {dotenv_path}")
+            load_dotenv(dotenv_path)
 
     def install(self):
         f = cursefetch.get_project_file(str(self.config.project_id), "latest")
