@@ -11,6 +11,7 @@ dependencies = [
     "cursefetch==0.2.1",
     "dacite>=1.9.2",
     "ftb-snbt-lib>=0.4.1",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.scripts]

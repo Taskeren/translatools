@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import overload, Literal
 
 import cursefetch
+from dotenv import load_dotenv
 
 from translatools.config import TranslatoolsMetadata, update_deprecated_metadata, TrackedFile, FileType
 from translatools.paratranz import Paratranz
@@ -15,6 +16,8 @@ from translatools.translatools import Translatools
 
 def main() -> None:
     print("Hello from translatools!")
+
+    load_dotenv()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="The configuration of the instance.", default="config.json")
