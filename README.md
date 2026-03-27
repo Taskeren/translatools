@@ -32,17 +32,27 @@ Create a file, `config.json` preferred.
   // The CurseForge file ID, or 0 if you don't know
   // It's used for updating the files from the latest version. Not implemented yet.
   "current_version_id": 1234567,
-  // A list of paths to tracked JSONs
-  // And glob is supported, where you can use '*' and '**' for matching multiple files,
-  // See glob: https://en.wikipedia.org/wiki/Glob_(programming)
-  "tracked_json_paths": [
-    "overrides/foo/bar/*.json"
-  ],
-  "tracked_lang_paths": [
-    "overrides/resources/**/lang/en_us.lang"
-  ],
-  // true to enable ftb quests support
-  "ftbquests": false
+  // deprecated!
+  "tracked_json_paths": [],
+  // deprecated!
+  "tracked_lang_paths": [],
+  // deprecated!
+  "ftbquests": false,
+  // tracked files with their type.
+  "tracked_files": [
+    {
+      // the path to the file, or the glob to match all the files.
+      // See glob: https://en.wikipedia.org/wiki/Glob_(programming)
+      "path": "overrides/kubejs/assets/**/lang/en_us.json",
+      // the type of the files.
+      // it determines how the app treat these files.
+      // supported types:
+      // - "json_kv": the JSON files where the root is an object, which it only contains string values.
+      // - "lang_kv": the regular Minecraft .lang files
+      // - "ftbquests_chapter": the SNBT file of Chapter definition of FTB Quests
+      "type": "json_kv"
+    }
+  ]
 }
 ```
 
