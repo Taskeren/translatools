@@ -14,7 +14,8 @@ _Currently working in progress._
 
 Using the command to initialize the project in the current directory. The directory must be empty.
 
-You need to add `CF_API_KEY` to the environment variable, or passing it as an argument `--api-key {the_key}`.
+You need to add `CF_API_KEY` to the environment variable, or passing it as an argument `--api-key {the_key}`,
+or [using dotenv](#using-_dotenv_).
 
 When the downloading is complete, you need to edit the `config.json` file, fill the `paratranz_id`. And there's a flaw
 in the current version that `_cwd` is also exported to the config file, you can remove it.
@@ -63,4 +64,17 @@ Fill in these fields, and **remove the comments**, because they're not supported
 `translatools sync2paratranz`
 
 Like initialization, you need to add `PARATRANZ_API_KEY` to the environment variable, or passing it as an argument
-`--api-key {the_key}`
+`--api-key {the_key}`, or using dotenv.
+
+### Using _dotenv_
+
+It now also supports reading environment variables from dotenv files like `.env`.
+
+You can create a `.env` file in the same directory of the config file, and it will be read automatically.
+
+If you want to use another name, you can set `dotenv_name` in the config.
+
+```dotenv
+CF_API_KEY=NEVER_GONNA_GIVE_YOU_UP
+PARATRANZ_API_KEY=NEVER_GONNA_LET_YOU_DOWN
+```
