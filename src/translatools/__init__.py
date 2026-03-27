@@ -7,9 +7,8 @@ from pathlib import Path
 from typing import overload, Literal
 
 import cursefetch
-from dotenv import load_dotenv
 
-from translatools.config import TranslatoolsMetadata, update_deprecated_metadata, TrackedFile, FileType
+from translatools.config import TranslatoolsMetadata, TrackedFile, FileType
 from translatools.paratranz import Paratranz
 from translatools.translatools import Translatools
 
@@ -119,7 +118,7 @@ def _command_tracked(args):
     cwd = translatools_.cwd()
 
     # migrate!
-    if update_deprecated_metadata(translatools_.config):
+    if TranslatoolsMetadata.update_deprecated_metadata(translatools_.config):
         translatools_.save_config()
 
     match args.tracked_command:

@@ -1,5 +1,4 @@
 import traceback
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
@@ -8,7 +7,6 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from translatools import TranslatoolsMetadata, Paratranz
-from translatools.config import update_deprecated_metadata
 
 
 class Translatools:
@@ -63,37 +61,9 @@ class Translatools:
                     traceback.print_exception(e)
 
         # Migrate!
-        update_deprecated_metadata(self.config)
+        TranslatoolsMetadata.update_deprecated_metadata(self.config)
 
         # upload or update the files from tracked files
         for tracked_file in self.config.tracked_files:
             paths = tracked_file.get_transformed_json_paths(self.cwd())
             upload_or_update_files(paths, f"Sync-ing {tracked_file.path} as {tracked_file.type}")
-
-
-@dataclass
-class FTBQuestKeyGeneratingConfig:
-    quest_title: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.title"
-    quest_subtitle: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.subtitle"
-    quest_description: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.description.{description_index}"
-    generate_description_index_for_empty_lines: bool = False
-
-    @staticmethod
-    def get_default() -> "FTBQuestKeyGeneratingConfig":
-        return FTBQuestKeyGeneratingConfig()
-
-    def get_title_key(self, chapter_id: str, quest_id: str):
-        return (self.quest_title
-                .replace("{chapter_id}", chapter_id)
-                .replace("{quest_id}", quest_id))
-
-    def get_subtitle_key(self, chapter_id: str, quest_id: str):
-        return (self.quest_subtitle
-                .replace("{chapter_id}", chapter_id)
-                .replace("{quest_id}", quest_id))
-
-    def get_description_key(self, chapter_id: str, quest_id: str, description_index: int):
-        return (self.quest_description
-                .replace("{chapter_id}", chapter_id)
-                .replace("{quest_id}", quest_id)
-                .replace("{description_index}", str(description_index)))

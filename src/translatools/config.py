@@ -9,8 +9,6 @@ import dacite
 import ftb_snbt_lib
 from ftb_snbt_lib.tag import List, Compound
 
-from translatools.translatools import FTBQuestKeyGeneratingConfig
-
 
 class FileType(StrEnum):
     """
@@ -93,6 +91,39 @@ class TranslatoolsMetadata:
     def write_to_path(path: Path, config: "TranslatoolsMetadata"):
         path.write_text(json.dumps(dataclasses.asdict(config), indent=4), encoding="utf-8")
 
+    @staticmethod
+    def update_deprecated_metadata(config: "TranslatoolsMetadata") -> bool:
+        """
+        Migrate deprecated fields, `tracked_json_paths`, `tracked_lang_paths` and `ftbquests`, to `tracked_files`, and
+        remove the values, if capable.
+        :param config: the config instance.
+        :return: True if anything is changed in the config, which means you need to update the file.
+        """
+        updated = False
+
+        if len(config.tracked_json_paths) > 0:
+            for json_path in config.tracked_json_paths:
+                config.tracked_files.append(TrackedFile(json_path, FileType.JSON_KV))
+            config.tracked_json_paths.clear()
+            print("'tracked_json_paths' is deprecated, and the paths are now migrated to new fields.")
+            updated = True
+
+        if len(config.tracked_lang_paths) > 0:
+            for lang_path in config.tracked_lang_paths:
+                config.tracked_files.append(TrackedFile(lang_path, FileType.LANG_KV))
+            config.tracked_lang_paths.clear()
+            print("'tracked_lang_paths' is deprecated, and the paths are now migrated to new fields.")
+            updated = True
+
+        if config.ftbquests:
+            config.tracked_files.append(
+                TrackedFile("**/config/ftbquests/quests/chapters/*.snbt", FileType.FTBQuests_Chapter))
+            config.ftbquests = False
+            print("'ftbquests' is deprecated, and the config is now migrated to new fields.")
+            updated = True
+
+        return updated
+
 
 def _write_json_from_ftbq_chapter_snbt(snbt_path: Path, json_path: Path):
     json_content = _generate_json_from_ftbquests_chapter(snbt_path)
@@ -102,39 +133,6 @@ def _write_json_from_ftbq_chapter_snbt(snbt_path: Path, json_path: Path):
 def _write_json_from_lang(lang_path: Path, json_path: Path):
     json_content = _generate_json_from_lang(lang_path)
     json_path.write_text(json_content, encoding="utf-8")
-
-
-def update_deprecated_metadata(config: TranslatoolsMetadata) -> bool:
-    """
-    Migrate deprecated fields, `tracked_json_paths`, `tracked_lang_paths` and `ftbquests`, to `tracked_files`, and
-    remove the values, if capable.
-    :param config: the config instance.
-    :return: True if anything is changed in the config, which means you need to update the file.
-    """
-    updated = False
-
-    if len(config.tracked_json_paths) > 0:
-        for json_path in config.tracked_json_paths:
-            config.tracked_files.append(TrackedFile(json_path, FileType.JSON_KV))
-        config.tracked_json_paths.clear()
-        print("'tracked_json_paths' is deprecated, and the paths are now migrated to new fields.")
-        updated = True
-
-    if len(config.tracked_lang_paths) > 0:
-        for lang_path in config.tracked_lang_paths:
-            config.tracked_files.append(TrackedFile(lang_path, FileType.LANG_KV))
-        config.tracked_lang_paths.clear()
-        print("'tracked_lang_paths' is deprecated, and the paths are now migrated to new fields.")
-        updated = True
-
-    if config.ftbquests:
-        config.tracked_files.append(
-            TrackedFile("**/config/ftbquests/quests/chapters/*.snbt", FileType.FTBQuests_Chapter))
-        config.ftbquests = False
-        print("'ftbquests' is deprecated, and the config is now migrated to new fields.")
-        updated = True
-
-    return updated
 
 
 def _generate_json_from_lang(lang_path: Path) -> str:
@@ -153,6 +151,34 @@ def _generate_json_from_lang(lang_path: Path) -> str:
             result[pair[0]] = pair[1]
 
         return json.dumps(result, indent=4)
+
+
+@dataclass
+class FTBQuestKeyGeneratingConfig:
+    quest_title: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.title"
+    quest_subtitle: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.subtitle"
+    quest_description: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.description.{description_index}"
+    generate_description_index_for_empty_lines: bool = False
+
+    @staticmethod
+    def get_default() -> "FTBQuestKeyGeneratingConfig":
+        return FTBQuestKeyGeneratingConfig()
+
+    def get_title_key(self, chapter_id: str, quest_id: str):
+        return (self.quest_title
+                .replace("{chapter_id}", chapter_id)
+                .replace("{quest_id}", quest_id))
+
+    def get_subtitle_key(self, chapter_id: str, quest_id: str):
+        return (self.quest_subtitle
+                .replace("{chapter_id}", chapter_id)
+                .replace("{quest_id}", quest_id))
+
+    def get_description_key(self, chapter_id: str, quest_id: str, description_index: int):
+        return (self.quest_description
+                .replace("{chapter_id}", chapter_id)
+                .replace("{quest_id}", quest_id)
+                .replace("{description_index}", str(description_index)))
 
 
 def _generate_json_from_ftbquests_chapter(snbt_path: Path,
