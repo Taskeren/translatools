@@ -114,12 +114,11 @@ def _command_sync_to_paratranz(args):
 
 def _command_tracked(args):
     translatools_ = _get_translatools_from_args(args, True)
-    config_path = translatools_.config_path()
     cwd = translatools_.cwd()
 
     # migrate!
     if update_deprecated_metadata(translatools_.config):
-        TranslatoolsMetadata.write_to_path(config_path, translatools_.config)
+        translatools_.save_config()
 
     match args.tracked_command:
         case "add":
@@ -137,7 +136,7 @@ def _command_tracked(args):
 
             tracked_file = TrackedFile(glob, type_)
             translatools_.config.tracked_files.append(tracked_file)
-            TranslatoolsMetadata.write_to_path(config_path, translatools_.config)
+            translatools_.save_config()
             print(f"Added tracked: '{tracked_file.path}' as {tracked_file.type}")
             tracked_paths = "\n".join(f"- {p.absolute().as_posix()}" for p in tracked_file.get_paths(cwd))
             print(tracked_paths)

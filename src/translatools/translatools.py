@@ -21,11 +21,11 @@ class Translatools:
     def __str__(self):
         return "Translatools(" + str(self.config) + ", conf_path=" + str(self._conf_path) + ")"
 
-    def config_path(self):
-        return self._conf_path
-
     def cwd(self):
         return self._conf_path.parent
+
+    def save_config(self):
+        TranslatoolsMetadata.write_to_path(self._conf_path, self.config)
 
     def install(self):
         f = cursefetch.get_project_file(str(self.config.project_id), "latest")
