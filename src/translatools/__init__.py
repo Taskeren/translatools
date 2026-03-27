@@ -4,12 +4,12 @@ import os.path
 import sys
 from dataclasses import asdict
 from pathlib import Path
+from typing import overload, Literal
 
 import cursefetch
-from dacite import from_dict
 
+from translatools.config import TranslatoolsMetadata, update_deprecated_metadata, TrackedFile, FileType
 from translatools.paratranz import Paratranz
-from translatools.config import TranslatoolsMetadata
 from translatools.translatools import Translatools
 
 
@@ -37,6 +37,14 @@ def main() -> None:
     sync2paratranz.add_argument("--api-key",
                                 help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
 
+    # tracked
+    tracked = subparser.add_parser("tracked")
+    tracked_subparser = tracked.add_subparsers(dest="tracked_command")
+    # tracked - add
+    tracked_add = tracked_subparser.add_parser("add")
+    tracked_add.add_argument("glob", help="The path or the glob to the files")
+    tracked_add.add_argument("type", help="The type of tracked files")
+
     args = parser.parse_args()
 
     match args.command:
@@ -44,8 +52,29 @@ def main() -> None:
             _command_init(args)
         case "sync2paratranz":
             _command_sync_to_paratranz(args)
+        case "tracked":
+            _command_tracked(args)
         case _:
             parser.print_help()
+
+
+@overload
+def _get_translatools_from_args(args, exit_on_invalid_path: Literal[True]) -> Translatools: ...
+
+
+@overload
+def _get_translatools_from_args(args, exit_on_invalid_path: Literal[False]) -> Translatools | None: ...
+
+
+def _get_translatools_from_args(args, exit_on_invalid_path: bool) -> Translatools | None:
+    conf_path = Path(args.config)
+    if not conf_path.exists():
+        if exit_on_invalid_path:
+            sys.exit(f"Configuration file is missing, expected {conf_path}")
+        else:
+            return None
+
+    return Translatools(TranslatoolsMetadata.load_from_path(conf_path), conf_path)
 
 
 def _command_init(args):
@@ -75,14 +104,48 @@ def _command_init(args):
 
 
 def _command_sync_to_paratranz(args):
-    config_path = Path(args.config)
-    cwd = config_path.parent
-
-    if not config_path.exists():
-        sys.exit(f"Configuration file is missing, expected {config_path}")
-    conf = from_dict(data_class=TranslatoolsMetadata, data=json.load(open(args.config)))
-    translatools_ = Translatools(conf, cwd)
-
+    translatools_ = _get_translatools_from_args(args, True)
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
-
     translatools_.sync_to_paratranz(para)
+
+
+def _command_tracked(args):
+    translatools_ = _get_translatools_from_args(args, True)
+    config_path = translatools_.config_path()
+    cwd = translatools_.cwd()
+
+    # migrate!
+    if update_deprecated_metadata(translatools_.config):
+        TranslatoolsMetadata.write_to_path(config_path, translatools_.config)
+
+    match args.tracked_command:
+        case "add":
+            glob = args.glob
+            type_ = args.type
+
+            if glob is None:
+                sys.exit("Argument glob is missing")
+            if type_ is None:
+                sys.exit("Argument type is missing")
+            try:
+                FileType(type_)
+            except ValueError:
+                sys.exit("Argument type is invalid")
+
+            tracked_file = TrackedFile(glob, type_)
+            translatools_.config.tracked_files.append(tracked_file)
+            TranslatoolsMetadata.write_to_path(config_path, translatools_.config)
+            print(f"Added tracked: '{tracked_file.path}' as {tracked_file.type}")
+            tracked_paths = "\n".join(f"- {p.absolute().as_posix()}" for p in tracked_file.get_paths(cwd))
+            print(tracked_paths)
+        case _:
+            if len(translatools_.config.tracked_files) <= 0:
+                print("Tracked nothing?! Add something by 'translatools tracked add'")
+            else:
+                for tracked_file in translatools_.config.tracked_files:
+                    print(f"Tracked: '{tracked_file.path}' as {tracked_file.type}")
+                    # the paths that matches
+                    tracked_paths = "\n".join(f"- {p.absolute().as_posix()}" for p in tracked_file.get_paths(cwd))
+                    print(tracked_paths)
+                    # separator
+                    print()
