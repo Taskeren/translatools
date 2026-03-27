@@ -1,6 +1,6 @@
 import json
 import traceback
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 from typing import Generator
@@ -11,39 +11,19 @@ from ftb_snbt_lib.tag import Compound
 from ftb_snbt_lib.tag import List
 from tqdm import tqdm
 
-from translatools.paratranz import Paratranz
+from translatools import TranslatoolsMetadata, Paratranz
 
 
-@dataclass
-class TranslatoolsMetadata:
-    # the CurseForge project ID
-    project_id: int
-    # the Paratranz project ID
-    paratranz_id: int
-    # the CurseForge file ID, or 0 for unknown or uninitialized
-    current_version_id: int = 0
-    # the tracked flat key-value-paired JSON files, relative to the configuration file, glob supported
-    tracked_json_paths: list[str] = field(default_factory=list)
-    # the tracked Mojang-flavored LANG files, relative to the configuration file, glob supported
-    tracked_lang_paths: list[str] = field(default_factory=list)
-    # true to enable support for FTBQuests
-    # but if somehow the modpack doesn't contain FTB Quests, or the contents are already localization-friendly,
-    # set it to false.
-    ftbquests: bool = True
+class Translatools:
+    config: TranslatoolsMetadata
+    _cwd: Path | None
 
-    _cwd: Path | None = None
-
-    def set_cwd(self, cwd: PathLike):
+    def __init__(self, config: TranslatoolsMetadata, cwd: PathLike):
+        self.config = config
         self._cwd = Path(cwd)
 
-    def relative_path(self, path: str) -> Path:
-        if self._cwd is not None:
-            return self._cwd / path
-        else:
-            return Path(path)
-
     def install(self):
-        f = cursefetch.get_project_file(str(self.project_id), "latest")
+        f = cursefetch.get_project_file(str(self.config.project_id), "latest")
         cursefetch.download_project_file(f, "workspace", uncompress=True)
 
     def handle_ftbquests(self):
@@ -60,7 +40,7 @@ class TranslatoolsMetadata:
 
     def sync_to_paratranz(self, client: Paratranz):
         # load existing
-        existing = client.get_file_list(self.paratranz_id)
+        existing = client.get_file_list(self.config.paratranz_id)
 
         def upload_or_update_files(path_generator: Generator[Path, None, None], desc: str):
             for json_path in (bar := tqdm(path_generator, desc=desc)):
@@ -70,15 +50,15 @@ class TranslatoolsMetadata:
                     if normalized_path.as_posix() in existing:  # as_posix() makes '\\' to '/' when on Windows
                         data = existing[normalized_path.as_posix()]
                         file_id = data["id"]
-                        client.update_file(self.paratranz_id, file_id, json_path)
+                        client.update_file(self.config.paratranz_id, file_id, json_path)
                     else:
-                        client.put_file(self.paratranz_id, json_path, normalized_path)
+                        client.put_file(self.config.paratranz_id, json_path, normalized_path)
                 except Exception as e:
                     print(f"Failed to upload {json_path}")
                     traceback.print_exception(e)
 
         # sync FTBQ first
-        if self.ftbquests:
+        if self.config.ftbquests:
             self.handle_ftbquests()
             ftbquests_dir = self._cwd / "ftbquests"
             if ftbquests_dir.exists():
@@ -86,10 +66,10 @@ class TranslatoolsMetadata:
         else:
             print("Skipped FTB Quests")
         # sync JSON
-        for tracked_json_path in self.tracked_json_paths:
+        for tracked_json_path in self.config.tracked_json_paths:
             upload_or_update_files(self._cwd.glob(tracked_json_path), "Synch-ing tracked JSONs")
         # handle LANG
-        for tracked_lang_path in self.tracked_lang_paths:
+        for tracked_lang_path in self.config.tracked_lang_paths:
             def lang_json_transform(g: Generator[Path, None, None]) -> Generator[Path, None, None]:
                 for lang_path in g:
                     try:
@@ -104,7 +84,6 @@ class TranslatoolsMetadata:
 
             upload_or_update_files(lang_json_transform(self._cwd.glob(tracked_lang_path)), "Sync-ing tracked LANGs")
         pass  # other kind of shits
-
 
 @dataclass
 class FTBQuestKeyGeneratingConfig:

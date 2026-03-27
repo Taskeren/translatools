@@ -9,7 +9,8 @@ import cursefetch
 from dacite import from_dict
 
 from translatools.paratranz import Paratranz
-from translatools.translatools import TranslatoolsMetadata
+from translatools.config import TranslatoolsMetadata
+from translatools.translatools import Translatools
 
 
 def main() -> None:
@@ -62,13 +63,13 @@ def _command_init(args):
     cursefetch.download_project_file(f, ".", uncompress=True)
 
     # write the config
-    config = TranslatoolsMetadata(
+    conf = TranslatoolsMetadata(
         project_id=int(args.project_id),
         paratranz_id=0,
         current_version_id=f.id,
     )
     with open(config_path, "w+") as output:
-        json.dump(asdict(config), output, ensure_ascii=False, indent=4)
+        json.dump(asdict(conf), output, ensure_ascii=False, indent=4)
     print(f"Initialized project at {cwd}.")
     print("Modify the paratranz_id to start working with Paratranz.")
 
@@ -79,9 +80,9 @@ def _command_sync_to_paratranz(args):
 
     if not config_path.exists():
         sys.exit(f"Configuration file is missing, expected {config_path}")
-    config = from_dict(data_class=TranslatoolsMetadata, data=json.load(open(args.config)))
-    config.set_cwd(cwd)
+    conf = from_dict(data_class=TranslatoolsMetadata, data=json.load(open(args.config)))
+    translatools_ = Translatools(conf, cwd)
 
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
 
-    config.sync_to_paratranz(para)
+    translatools_.sync_to_paratranz(para)
