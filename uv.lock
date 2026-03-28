@@ -95,7 +95,7 @@ wheels = [
 
 [[package]]
 name = "cursefetch"
-version = "0.2.1"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dacite" },
@@ -103,9 +103,9 @@ dependencies = [
     { name = "requests" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/21/4f/1ad985b9d5a35a6c84d0d609bde44ace25c086bf9200c39eed38488147d4/cursefetch-0.2.1.tar.gz", hash = "sha256:9d3fb80f8902ac433b82c73862bc18690d8bcb3ada7bc8e2917dd30085a8f03f", size = 18650, upload-time = "2026-03-26T13:24:12.964Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/58/04870daa50712f28a0658e93abcb5b016f16f2ec4e777e2fb0b77ed3a2c4/cursefetch-0.2.2.tar.gz", hash = "sha256:28290467d3d9cc07883939b7bf35d1450049ea386c44794d679270c7d362a545", size = 23004, upload-time = "2026-03-28T08:57:04.037Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/5a/41719041c951f4eb982b8de6799084363769d6d2f6efbe4b1787de1b63c2/cursefetch-0.2.1-py3-none-any.whl", hash = "sha256:d45bbf8b291da08536326fcc1c260f4621cbb88c28e8a03f44e03458a635c0a5", size = 6936, upload-time = "2026-03-26T13:24:11.576Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/4e/af94cf2962fd3fcbb41c76546a72c4794b8ed118db00f309409ed18129b3/cursefetch-0.2.2-py3-none-any.whl", hash = "sha256:b4ae97091e3b7de3050eda71414afd66771628f643921697669cfcd706386ad2", size = 11317, upload-time = "2026-03-28T08:57:02.823Z" },
 ]
 
 [[package]]
@@ -196,7 +196,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cursefetch", specifier = "==0.2.1" },
+    { name = "cursefetch", specifier = ">=0.2.2" },
     { name = "dacite", specifier = ">=1.9.2" },
     { name = "ftb-snbt-lib", specifier = ">=0.4.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },

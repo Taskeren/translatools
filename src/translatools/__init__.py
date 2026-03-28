@@ -105,7 +105,7 @@ def _command_init(args):
     if args.api_key is not None:
         os.environ["CF_API_KEY"] = args.api_key
     f = cursefetch.get_project_file(str(args.project_id), args.version, args.release_type)
-    cursefetch.download_project_file(f, ".", uncompress=True)
+    cursefetch.download_project_file_and_uncompress(f, ".")
 
     # write the config
     conf = TranslatoolsMetadata(
