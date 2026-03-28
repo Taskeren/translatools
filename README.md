@@ -15,7 +15,7 @@ _Currently working in progress._
 Using the command to initialize the project in the current directory. The directory must be empty.
 
 You need to add `CF_API_KEY` to the environment variable, or passing it as an argument `--api-key {the_key}`,
-or [using dotenv](#using-_dotenv_).
+or [using dotenv](#using-dotenv).
 
 When the downloading is complete, you need to edit the `config.json` file, fill the `paratranz_id`. And there's a flaw
 in the current version that `_cwd` is also exported to the config file, you can remove it.
@@ -66,7 +66,18 @@ Fill in these fields, and **remove the comments**, because they're not supported
 Like initialization, you need to add `PARATRANZ_API_KEY` to the environment variable, or passing it as an argument
 `--api-key {the_key}`, or using dotenv.
 
-### Using _dotenv_
+### Generate Packs
+
+`translatools generate`
+
+Needs Paratranz api key.
+
+It generates a resourcepack depends on the configuration and passed in arguments.
+You can specify the output path of the result using `--output {path}`.
+
+Use `--dump-json` to only generate the result key-value pair JSON.
+
+### Using dotenv
 
 It now also supports reading environment variables from dotenv files like `.env`.
 
