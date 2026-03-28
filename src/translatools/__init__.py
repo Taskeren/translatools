@@ -130,6 +130,10 @@ def _command_generate(args):
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
     output_path = args.output
     mode = int(args.mode)
+    pack_format = translatools_.config.pack_format
+    pack_desc = translatools_.config.pack_description
+    if pack_desc is None:
+        pack_desc = "§bTranslatools Generated"
     if args.dump_json:
         # dump as JSON only
         if output_path is None:
@@ -141,7 +145,7 @@ def _command_generate(args):
         if output_path is None:
             output_path = ".dump.zip"
         output = Path(output_path)
-        translatools_.dump_translated_zip(para, output, mode)
+        translatools_.dump_translated_zip(para, output, mode, pack_format=pack_format, pack_description=pack_desc)
         print(f"Dumped resourcepack to {output} in mode {mode}")
 
 

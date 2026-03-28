@@ -1,7 +1,6 @@
 import json
 import traceback
 import zipfile
-from dataclasses import replace
 from pathlib import Path
 from typing import Iterable
 
@@ -80,25 +79,25 @@ class Translatools:
             paths = tracked_file.get_transformed_json_paths(self.cwd())
             upload_or_update_files(paths, f"Sync-ing {tracked_file.path} as {tracked_file.type}")
 
-    def _download_and_merge_translated_content(self, client: Paratranz, mode: int = 0) -> str:
+    def _download_and_merge_translated_content_to_dict(self, client: Paratranz, mode: int = 0) -> dict:
         """
-        Stage:
-         0 - untranslated
-         1 - translated (not approved)
-         2 - questioned
-         3 - approved
-         5 - approved
-         9 - locked (only admins can unlock, and is considered as translated)
-        -1 - hidden (untranslated value is used)
+                Stage:
+                 0 - untranslated
+                 1 - translated (not approved)
+                 2 - questioned
+                 3 - approved
+                 5 - approved
+                 9 - locked (only admins can unlock, and is considered as translated)
+                -1 - hidden (untranslated value is used)
 
-        3-approved only exists when the project enables double check, and it means it is checked for the first time.
-        otherwise, only 5-approved is used.
+                3-approved only exists when the project enables double check, and it means it is checked for the first time.
+                otherwise, only 5-approved is used.
 
-        Mode:
-        0 - Approved, dump approved (2nd-time) only and locked
-        1 - Any translated, dump translated, questioned, both approved and locked
-        2 - All, dump anything
-        """
+                Mode:
+                0 - Approved, dump approved (2nd-time) only and locked
+                1 - Any translated, dump translated, questioned, both approved and locked
+                2 - All, dump anything
+                """
 
         def should_dump(entry_) -> bool:
             """
@@ -155,21 +154,34 @@ class Translatools:
                 print(f"Content:\n{json_str}")
                 traceback.print_exception(e)
 
+        return result
+
+    def _make_translated_json(self, client: Paratranz, mode: int = 0) -> str:
+        result = self._download_and_merge_translated_content_to_dict(client, mode)
         return json.dumps(result, ensure_ascii=False, indent=4)
 
+    def _make_translated_lang(self, client: Paratranz, mode: int = 0) -> str:
+        result = self._download_and_merge_translated_content_to_dict(client, mode)
+        return "\n".join(f"{key}={value}" for key, value in result.items())
+
     def dump_translated_to(self, client: Paratranz, path: Path, mode: int = 0):
-        json_str = self._download_and_merge_translated_content(client, mode)
+        json_str = self._make_translated_json(client, mode)
         path.write_text(json_str, encoding="utf-8")
 
     @staticmethod
     def _generate_pack_mcmeta(pack_format: int, pack_description: str) -> str:
         return PACK_MCDATA.replace("{pack_format}", str(pack_format)).replace("{pack_description}", pack_description)
 
-    def dump_translated_zip(self, client: Paratranz, zip_path: Path, mode: int = 0, pack_format: int = 15,
+    def dump_translated_zip(self, client: Paratranz, zip_path: Path, mode: int = 0, *, pack_format: int = 15,
                             pack_description: str = "§bTranslatools Generated"):
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+            # write the language LANG
+            if pack_format <= 3:  # before Minecraft 1.13, the flattening
+                lang_str = self._make_translated_lang(client, mode)
+                z.writestr("assets/translatools/lang/zh_CN.lang", lang_str)
             # write the language JSON
-            json_str = self._download_and_merge_translated_content(client, mode)
-            z.writestr("assets/translatools/lang/zh_cn.json", json_str)
+            else:
+                json_str = self._make_translated_json(client, mode)
+                z.writestr("assets/translatools/lang/zh_cn.json", json_str)
             # write resourcepack info
             z.writestr("pack.mcdata", Translatools._generate_pack_mcmeta(pack_format, pack_description))

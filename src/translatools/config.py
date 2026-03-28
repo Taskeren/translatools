@@ -81,6 +81,11 @@ class TranslatoolsMetadata:
     tracked_files: list[TrackedFile] = field(default_factory=list)
     # dotenv name
     dotenv_name: Optional[str] = field(default=None)
+    # resourcepack format
+    # https://minecraft.wiki/w/Pack_format
+    pack_format: int = field(default=15)
+    # resourcepack description
+    pack_description: Optional[str] = field(default=None)
 
     @staticmethod
     def load_from_path(path: Path) -> "TranslatoolsMetadata":
