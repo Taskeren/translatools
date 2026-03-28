@@ -33,12 +33,6 @@ Create a file, `config.json` preferred.
   // The CurseForge file ID, or 0 if you don't know
   // It's used for updating the files from the latest version. Not implemented yet.
   "current_version_id": 1234567,
-  // deprecated!
-  "tracked_json_paths": [],
-  // deprecated!
-  "tracked_lang_paths": [],
-  // deprecated!
-  "ftbquests": false,
   // tracked files with their type.
   "tracked_files": [
     {
@@ -53,7 +47,13 @@ Create a file, `config.json` preferred.
       // - "ftbquests_chapter": the SNBT file of Chapter definition of FTB Quests
       "type": "json_kv"
     }
-  ]
+  ],
+  // the resourcepack format used in pack.mcmeta
+  // See https://minecraft.wiki/w/Pack_format
+  // if in 0-3, the generated pack contains the LANGs instead of JSONs for legacy compatibility.
+  "pack_format": 15,
+  // the resourcepack description used in pack.mcmeta
+  "pack_description": "HELLO WORLD"
 }
 ```
 
