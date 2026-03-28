@@ -1,5 +1,7 @@
 import json
 import traceback
+import zipfile
+from dataclasses import replace
 from pathlib import Path
 from typing import Iterable
 
@@ -8,6 +10,15 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from translatools import TranslatoolsMetadata, Paratranz
+
+PACK_MCDATA = """
+{
+  "pack": {
+    "pack_format": {pack_format},
+    "description": "{pack_description}"
+  }
+}
+"""
 
 
 class Translatools:
@@ -149,3 +160,16 @@ class Translatools:
     def dump_translated_to(self, client: Paratranz, path: Path, mode: int = 0):
         json_str = self._download_and_merge_translated_content(client, mode)
         path.write_text(json_str, encoding="utf-8")
+
+    @staticmethod
+    def _generate_pack_mcmeta(pack_format: int, pack_description: str) -> str:
+        return PACK_MCDATA.replace("{pack_format}", str(pack_format)).replace("{pack_description}", pack_description)
+
+    def dump_translated_zip(self, client: Paratranz, zip_path: Path, mode: int = 0, pack_format: int = 15,
+                            pack_description: str = "§bTranslatools Generated"):
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+            # write the language JSON
+            json_str = self._download_and_merge_translated_content(client, mode)
+            z.writestr("assets/translatools/lang/zh_cn.json", json_str)
+            # write resourcepack info
+            z.writestr("pack.mcdata", Translatools._generate_pack_mcmeta(pack_format, pack_description))
