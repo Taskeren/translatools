@@ -63,20 +63,6 @@ class TranslatoolsMetadata:
     paratranz_id: int
     # the CurseForge file ID, or 0 for unknown or uninitialized
     current_version_id: int = 0
-    # the tracked flat key-value-paired JSON files, relative to the configuration file, glob supported
-    # deprecated
-    # TODO: REMOVE
-    tracked_json_paths: Optional[list[str]] = field(default=None)
-    # the tracked Mojang-flavored LANG files, relative to the configuration file, glob supported
-    # deprecated
-    # TODO: REMOVE
-    tracked_lang_paths: Optional[list[str]] = field(default=None)
-    # true to enable support for FTBQuests
-    # but if somehow the modpack doesn't contain FTB Quests, or the contents are already localization-friendly,
-    # set it to false.
-    # deprecated
-    # TODO: REMOVE
-    ftbquests: Optional[bool] = field(default=None)
     # the tracked files
     tracked_files: list[TrackedFile] = field(default_factory=list)
     # dotenv name
@@ -95,39 +81,6 @@ class TranslatoolsMetadata:
     @staticmethod
     def write_to_path(path: Path, config: "TranslatoolsMetadata"):
         path.write_text(json.dumps(dataclasses.asdict(config), indent=4), encoding="utf-8")
-
-    @staticmethod
-    def update_deprecated_metadata(config: "TranslatoolsMetadata") -> bool:
-        """
-        Migrate deprecated fields, `tracked_json_paths`, `tracked_lang_paths` and `ftbquests`, to `tracked_files`, and
-        remove the values, if capable.
-        :param config: the config instance.
-        :return: True if anything is changed in the config, which means you need to update the file.
-        """
-        updated = False
-
-        if len(config.tracked_json_paths) > 0:
-            for json_path in config.tracked_json_paths:
-                config.tracked_files.append(TrackedFile(json_path, FileType.JSON_KV))
-            config.tracked_json_paths.clear()
-            print("'tracked_json_paths' is deprecated, and the paths are now migrated to new fields.")
-            updated = True
-
-        if len(config.tracked_lang_paths) > 0:
-            for lang_path in config.tracked_lang_paths:
-                config.tracked_files.append(TrackedFile(lang_path, FileType.LANG_KV))
-            config.tracked_lang_paths.clear()
-            print("'tracked_lang_paths' is deprecated, and the paths are now migrated to new fields.")
-            updated = True
-
-        if config.ftbquests:
-            config.tracked_files.append(
-                TrackedFile("**/config/ftbquests/quests/chapters/*.snbt", FileType.FTBQuests_Chapter))
-            config.ftbquests = False
-            print("'ftbquests' is deprecated, and the config is now migrated to new fields.")
-            updated = True
-
-        return updated
 
 
 def _write_json_from_ftbq_chapter_snbt(snbt_path: Path, json_path: Path):

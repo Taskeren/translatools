@@ -153,10 +153,6 @@ def _command_tracked(args):
     translatools_ = _get_translatools_from_args(args, True)
     cwd = translatools_.cwd()
 
-    # migrate!
-    if TranslatoolsMetadata.update_deprecated_metadata(translatools_.config):
-        translatools_.save_config()
-
     match args.tracked_command:
         case "add":
             glob = args.glob

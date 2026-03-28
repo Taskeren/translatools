@@ -71,9 +71,6 @@ class Translatools:
                     print(f"Failed to upload {json_path}")
                     traceback.print_exception(e)
 
-        # Migrate!
-        TranslatoolsMetadata.update_deprecated_metadata(self.config)
-
         # upload or update the files from tracked files
         for tracked_file in self.config.tracked_files:
             paths = tracked_file.get_transformed_json_paths(self.cwd())
