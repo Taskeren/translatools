@@ -40,7 +40,7 @@ class TrackedFile:
                 for lang_path in cwd.glob(self.path):
                     output_path = lang_path.parent / lang_path.name.replace(".lang", ".json")
                     _write_json_from_lang(lang_path, output_path)
-                    result += output_path
+                    result.append(output_path)
                 return result
             case FileType.FTBQuests_Chapter:
                 result = []
@@ -51,7 +51,7 @@ class TrackedFile:
                 for snbt_path in cwd.glob(self.path):
                     output_path = output_dir / snbt_path.name.replace(".snbt", ".json")
                     _write_json_from_ftbq_chapter_snbt(snbt_path, output_path)
-                    result += output_path
+                    result.append(output_path)
                 return result
 
 
