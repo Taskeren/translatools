@@ -41,6 +41,14 @@ def main() -> None:
     sync2paratranz.add_argument("--api-key",
                                 help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
 
+    # generate
+    generate = subparser.add_parser("generate")
+    generate.add_argument("--api-key",
+                          help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
+    generate.add_argument("--dump-json", help="Dump the merged JSON only.", action="store_true")
+    generate.add_argument("-o", "--output", help="The output path.", default=".dumped.json")
+    generate.add_argument("--mode", help="The selector of which entries should be dumped. 0 - Approved, 1 - Any translated, 2 - All.", default="0")
+
     # tracked
     tracked = subparser.add_parser("tracked")
     tracked_subparser = tracked.add_subparsers(dest="tracked_command")
@@ -56,6 +64,8 @@ def main() -> None:
             _command_init(args)
         case "sync2paratranz":
             _command_sync_to_paratranz(args)
+        case "generate":
+            _command_generate(args)
         case "tracked":
             _command_tracked(args)
         case _:
@@ -111,6 +121,21 @@ def _command_sync_to_paratranz(args):
     translatools_ = _get_translatools_from_args(args, True)
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
     translatools_.sync_to_paratranz(para)
+
+
+def _command_generate(args):
+    translatools_ = _get_translatools_from_args(args, True)
+    para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
+    output = Path(args.output)
+    mode = int(args.mode)
+    translatools_.dump_translated_to(para, output, mode)
+    print(f"Dumped JSON to {output} in mode {mode}")
+    if args.dump_json:
+        # done and exit
+        return
+    else:
+        pass
+    # TODO: zip the result to a valid resourcepack
 
 
 def _command_tracked(args):

@@ -35,3 +35,9 @@ class Paratranz:
         resp = requests.post(url, headers={"Authorization": f"Bearer {self.token}"},
                              files={"file": open(path, encoding="utf-8")})
         resp.raise_for_status()
+
+    def get_translated_file(self, paratranz_project_id: int, file_id: int) -> str:
+        url = f"{BASE_URL}/projects/{paratranz_project_id}/files/{file_id}/translation"
+        resp = requests.get(url, headers={"Authorization": f"Bearer {self.token}"})
+        resp.raise_for_status()
+        return resp.text
