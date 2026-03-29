@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 import os.path
 import sys
@@ -63,13 +64,13 @@ def main() -> None:
 
     match args.command:
         case "init":
-            _command_init(args)
+            asyncio.run(_command_init(args))
         case "sync2paratranz":
-            _command_sync_to_paratranz(args)
+            asyncio.run(_command_sync_to_paratranz(args))
         case "generate":
-            _command_generate(args)
+            asyncio.run(_command_generate(args))
         case "tracked":
-            _command_tracked(args)
+            asyncio.run(_command_tracked(args))
         case _:
             parser.print_help()
 
@@ -93,7 +94,7 @@ def _get_translatools_from_args(args, exit_on_invalid_path: bool) -> Translatool
     return Translatools(TranslatoolsMetadata.load_from_path(conf_path), conf_path)
 
 
-def _command_init(args):
+async def _command_init(args):
     config_path = Path(args.config)
     cwd = config_path.parent
 
@@ -119,13 +120,13 @@ def _command_init(args):
     print("Modify the paratranz_id to start working with Paratranz.")
 
 
-def _command_sync_to_paratranz(args):
+async def _command_sync_to_paratranz(args):
     translatools_ = _get_translatools_from_args(args, True)
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
-    translatools_.sync_to_paratranz(para)
+    await translatools_.sync_to_paratranz_async(para)
 
 
-def _command_generate(args):
+async def _command_generate(args):
     translatools_ = _get_translatools_from_args(args, True)
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
     output_path = args.output
@@ -139,17 +140,17 @@ def _command_generate(args):
         if output_path is None:
             output_path = ".dump.json"
         output = Path(output_path)
-        translatools_.dump_translated_to(para, output, mode)
+        await translatools_.dump_translated_to(para, output, mode)
         print(f"Dumped JSON to {output} in mode {mode}")
     else:
         if output_path is None:
             output_path = ".dump.zip"
         output = Path(output_path)
-        translatools_.dump_translated_zip(para, output, mode, pack_format=pack_format, pack_description=pack_desc)
+        await translatools_.dump_translated_zip(para, output, mode, pack_format=pack_format, pack_description=pack_desc)
         print(f"Dumped resourcepack to {output} in mode {mode}")
 
 
-def _command_tracked(args):
+async def _command_tracked(args):
     translatools_ = _get_translatools_from_args(args, True)
     cwd = translatools_.cwd()
 
