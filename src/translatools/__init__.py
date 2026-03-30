@@ -47,6 +47,9 @@ def main() -> None:
     sync2paratranz = subparser.add_parser("sync2paratranz")
     sync2paratranz.add_argument("--api-key",
                                 help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
+    sync2paratranz.add_argument("--dry-run",
+                                help="Dump the files that would be uploaded or updated to the directory locally.",
+                                action="store_true")
 
     # generate
     generate = subparser.add_parser("generate")
@@ -129,7 +132,10 @@ async def _command_init(args):
 async def _command_sync_to_paratranz(args):
     translatools_ = _get_translatools_from_args(args, True)
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
-    await translatools_.sync_to_paratranz_async(para)
+    if args.dry_run:
+        await translatools_.dump_translation_json(Path(".dry_run"))
+    else:
+        await translatools_.sync_to_paratranz_async(para)
 
 
 async def _command_generate(args):

@@ -1,4 +1,5 @@
 import json
+import shutil
 import traceback
 import zipfile
 from pathlib import Path
@@ -76,6 +77,20 @@ class Translatools:
             for tracked_file in self.config.tracked_files:
                 paths = tracked_file.get_transformed_json_paths(self.cwd())
                 await upload_or_update_files(paths, f"Sync-ing {tracked_file.path} as {tracked_file.type}")
+
+    async def dump_translation_json(self, destination: Path):
+        for tracked_file in self.config.tracked_files:
+            async for json_path in (bar := tqdm_async(tracked_file.get_transformed_json_paths(self.cwd()))):
+                try:
+                    bar.set_postfix_str(str(json_path))
+                    normalized_path = json_path.relative_to(self.cwd())
+                    json_destination_directory = destination / normalized_path.parent
+                    # ensure the output directory exists
+                    json_destination_directory.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(json_path, json_destination_directory)
+                except Exception as e:
+                    print(f"Failed to handle {json_path}")
+                    traceback.print_exception(e)
 
     async def _download_and_merge_translated_content_to_dict(self, client: Paratranz, mode: int = 0) -> dict:
         """

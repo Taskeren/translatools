@@ -1,4 +1,5 @@
 import dataclasses
+from dataclasses import asdict
 import json
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -6,8 +7,8 @@ from pathlib import Path
 from typing import Optional
 
 import dacite
-import ftb_snbt_lib
-from ftb_snbt_lib.tag import List, Compound
+
+from translatools.ftbquests import FTBQuestKeyGeneratingConfig, FTBQuestsChapter
 
 
 class FileType(StrEnum):
@@ -72,6 +73,8 @@ class TranslatoolsMetadata:
     pack_format: int = field(default=15)
     # resourcepack description
     pack_description: Optional[str] = field(default=None)
+    # ftbquests key generation config
+    ftbquests_key_config: str | dict = field(default="default")
 
     @staticmethod
     def load_from_path(path: Path) -> "TranslatoolsMetadata":
@@ -80,7 +83,10 @@ class TranslatoolsMetadata:
 
     @staticmethod
     def write_to_path(path: Path, config: "TranslatoolsMetadata"):
-        path.write_text(json.dumps(dataclasses.asdict(config), indent=4), encoding="utf-8")
+        path.write_text(json.dumps(asdict(config), indent=4), encoding="utf-8")
+
+    def get_ftbquests_key_config(self) -> FTBQuestKeyGeneratingConfig:
+        return FTBQuestKeyGeneratingConfig.load(self.ftbquests_key_config)
 
 
 def _write_json_from_ftbq_chapter_snbt(snbt_path: Path, json_path: Path):
@@ -111,68 +117,18 @@ def _generate_json_from_lang(lang_path: Path) -> str:
         return json.dumps(result, indent=4)
 
 
-@dataclass
-class FTBQuestKeyGeneratingConfig:
-    quest_title: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.title"
-    quest_subtitle: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.subtitle"
-    quest_description: str = "ftbquests.chapter.{chapter_id}.quests.{quest_id}.description.{description_index}"
-    generate_description_index_for_empty_lines: bool = False
-
-    @staticmethod
-    def get_default() -> "FTBQuestKeyGeneratingConfig":
-        return FTBQuestKeyGeneratingConfig()
-
-    def get_title_key(self, chapter_id: str, quest_id: str):
-        return (self.quest_title
-                .replace("{chapter_id}", chapter_id)
-                .replace("{quest_id}", quest_id))
-
-    def get_subtitle_key(self, chapter_id: str, quest_id: str):
-        return (self.quest_subtitle
-                .replace("{chapter_id}", chapter_id)
-                .replace("{quest_id}", quest_id))
-
-    def get_description_key(self, chapter_id: str, quest_id: str, description_index: int):
-        return (self.quest_description
-                .replace("{chapter_id}", chapter_id)
-                .replace("{quest_id}", quest_id)
-                .replace("{description_index}", str(description_index)))
-
-
 def _generate_json_from_ftbquests_chapter(snbt_path: Path,
                                           config: FTBQuestKeyGeneratingConfig = FTBQuestKeyGeneratingConfig.get_default()) -> str:
-    """
-    Generate key-value-paired JSON file from FTB Quests Chapter files.
-    :param snbt_path: the SNBT file path
-    :param config: the configuration
-    :return: the result JSON file content
-    """
-    with open(snbt_path, encoding="utf-8") as f:
-        data = ftb_snbt_lib.load(f)
-        chapter_id = str(data["id"])
-        quests: List = data["quests"]
-        if not isinstance(quests, List):
-            raise ValueError("'quests' in the snbt is not a list")
+    result = dict()
 
-        result = dict()
-        for quest in quests:
-            quest: Compound
-            quest_id = str(quest["id"])
+    chapter = FTBQuestsChapter.load(snbt_path)
+    for quest_index, quest in enumerate(chapter.quests):
+        if quest.title is not None:
+            result[config.get_title_key(chapter, quest, quest_index)] = quest.title
+        if quest.subtitle is not None:
+            result[config.get_subtitle_key(chapter, quest, quest_index)] = quest.subtitle
+        if quest.description is not None:
+            for desc_index, desc in enumerate(quest.description):
+                result[config.get_description_key(chapter, quest, quest_index, desc_index)] = desc
 
-            if "title" in quest:
-                title = quest["title"]
-                result[config.get_title_key(chapter_id, quest_id)] = str(title)
-            if "subtitle" in quest:
-                subtitle = quest["subtitle"]
-                result[config.get_subtitle_key(chapter_id, quest_id)] = str(subtitle)
-            if "description" in quest:
-                description: List = quest["description"]
-                count = 0
-                for index, desc in enumerate(description):
-                    if config.generate_description_index_for_empty_lines:
-                        result[config.get_description_key(chapter_id, quest_id, index)] = str(desc)
-                    else:
-                        result[config.get_description_key(chapter_id, quest_id, count)] = str(desc)
-                        count += 1
-
-        return json.dumps(result, indent=4)
+    return json.dumps(result, indent=4)
