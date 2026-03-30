@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import overload, Literal
 
 import cursefetch
+import questionary
 
 from translatools.config import TranslatoolsMetadata, TrackedItem
 from translatools.handler import TRANSLATION_HANDLERS
@@ -44,13 +45,16 @@ def main() -> None:
                       help="The CurseForge API key to use (can also be set via CF_API_KEY environment variable).")
     init.add_argument("--allow-non-empty-directory", action="store_true")
 
+    # setup-wizard
+    setup_wizard = subparser.add_parser("setup-wizard")
+
     # upload
     upload = subparser.add_parser("upload", help="Upload the translation entries to Paratranz.")
     upload.add_argument("--api-key",
-                                help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
+                        help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
     upload.add_argument("--dry-run",
-                                help="Dump the files that would be uploaded or updated to the directory locally.",
-                                action="store_true")
+                        help="Dump the files that would be uploaded or updated to the directory locally.",
+                        action="store_true")
 
     # download
     download = subparser.add_parser("download", help="Download the result of translated entries from Paratranz.")
@@ -74,6 +78,8 @@ def main() -> None:
     match args.command:
         case "init":
             asyncio.run(_command_init(args))
+        case "setup-wizard":
+            _command_setup_wizard(args)
         case "upload":
             asyncio.run(_command_sync_to_paratranz(args))
         case "download":
@@ -187,3 +193,37 @@ async def _command_tracked(args):
                         f"- {p.absolute().as_posix()}" for p in h.get_paths(mcwd, tracked_item.extra))
                     print(tracked_paths)
                     print()
+
+
+def _command_setup_wizard(args):
+    translatools_ = _get_translatools_from_args(args, exit_on_invalid_path=True)
+
+    def add_handler(type_: str, name: str):
+        if type_ not in TRANSLATION_HANDLERS.keys():
+            raise ValueError(f"{type_} is not a valid type, report this bug!")
+        tracked_item = TrackedItem(type_, name)
+        translatools_.config.tracked_items.append(tracked_item)
+        tracked_path = "\n".join(
+            [f"- {path.absolute()}" for path in tracked_item.handler.get_paths(translatools_.mcwd, tracked_item.extra)])
+        print("Added tracked paths:")
+        print(tracked_path)
+
+    kubejs_assets_path = translatools_.mcwd / "kubejs" / "assets"
+    if kubejs_assets_path.exists():
+        if questionary.confirm("KubeJS Assets found, do you want to handle this?").ask():
+            add_handler("kubejs_assets", "KubeJS Assets")
+
+    ftbquests_path = translatools_.mcwd / "config" / "ftbquests" / "quests"
+    ftbquests_lang_path = ftbquests_path / "lang"
+    if ftbquests_lang_path.exists():
+        if questionary.confirm("FTBQuests builtin localization found, do you want to handle this?").ask():
+            add_handler("ftbquests_builtin_lang", "FTBQuests")
+    elif ftbquests_path.exists():
+        if questionary.confirm(
+                "FTBQuests found, but not the 'lang' directory. Do you still want to handle this?").ask():
+            add_handler("ftbquests_builtin_lang", "FTBQuests")
+        elif questionary.confirm("If the Minecraft is 1.20.1, do you want to use FTBQuests Forcibly Translated?").ask():
+            add_handler("ftbquests_forcibly_translated", "FTBQuests")
+
+    translatools_.save_config()
+    print("Setup Wizard completed!")
