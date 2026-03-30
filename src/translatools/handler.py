@@ -19,6 +19,7 @@ class TranslationHandler(Protocol):
         Extract the key-value pairs.
 
         The return list contains the target path of the translated file and the content to be translated in JSON format.
+        The path should be relative to the given Minecraft working directory (mcwd).
         """
         ...
 
@@ -27,6 +28,7 @@ class TranslationHandler(Protocol):
         Assemble the key-value pairs.
 
         The given list contains the target path of the translated file and the translated content in JSON format.
+        The path should be relative to the given Minecraft working directory (mcwd).
         """
         ...
 
@@ -108,10 +110,16 @@ class FTBQuestsBuiltinLanguage(TranslationHandler):
         r = ftb_snbt_lib.Compound()
         for (key, value) in data.items():
             value = value.split("\n")
-            if value is list:
-                r[key] = ftb_snbt_lib.List(value)
-            else:
-                r[key] = ftb_snbt_lib.String(value)
+            match len(value):
+                case 0:
+                    r[key] = ftb_snbt_lib.String("")
+                    break
+                case 1:
+                    r[key] = ftb_snbt_lib.String(value[0])
+                    break
+                case _:
+                    r[key] = ftb_snbt_lib.List(value)
+                    break
         return r
 
     def get_paths(self, mcwd: Path, extra: dict) -> Iterable[Path]:

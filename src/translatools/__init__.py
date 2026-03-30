@@ -169,7 +169,7 @@ async def _command_tracked(args):
             if name is None:
                 sys.exit("Argument name is missing")
 
-            tracked_item = TrackedItem(type_)
+            tracked_item = TrackedItem(type_, name)
             translatools_.config.tracked_items.append(tracked_item)
             translatools_.save_config()
             print(f"Added tracked: '{tracked_item.get_name()}'")

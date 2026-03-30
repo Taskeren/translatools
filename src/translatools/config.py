@@ -6,7 +6,7 @@ from typing import Optional
 
 import dacite
 
-from translatools.ftbquests import FTBQuestKeyGeneratingConfig, FTBQuestsChapter
+from translatools.ftbquests import FTBQuestKeyGeneratingConfig
 from translatools.handler import TRANSLATION_HANDLERS, TranslationHandler
 
 
@@ -59,48 +59,3 @@ class TranslatoolsMetadata:
 
     def get_ftbquests_key_config(self) -> FTBQuestKeyGeneratingConfig:
         return FTBQuestKeyGeneratingConfig.load(self.ftbquests_key_config)
-
-
-def _write_json_from_ftbq_chapter_snbt(snbt_path: Path, json_path: Path):
-    json_content = _generate_json_from_ftbquests_chapter(snbt_path)
-    json_path.write_text(json_content, encoding="utf-8")
-
-
-def _write_json_from_lang(lang_path: Path, json_path: Path):
-    json_content = _generate_json_from_lang(lang_path)
-    json_path.write_text(json_content, encoding="utf-8")
-
-
-def _generate_json_from_lang(lang_path: Path) -> str:
-    result = dict()
-    with open(lang_path, encoding="utf-8") as lang_file:
-        entries = lang_file.read().splitlines()
-        for entry in entries:
-            entry = entry.strip()
-            # ignore comments
-            if entry.startswith("#") or len(entry) == 0:
-                continue
-            pair = entry.split("=", maxsplit=1)
-            if len(pair) != 2:
-                raise ValueError(f"Unable to split the language entry: {entry}")
-            # store the key-value pair
-            result[pair[0]] = pair[1]
-
-        return json.dumps(result, indent=4)
-
-
-def _generate_json_from_ftbquests_chapter(snbt_path: Path,
-                                          config: FTBQuestKeyGeneratingConfig = FTBQuestKeyGeneratingConfig.get_default()) -> str:
-    result = dict()
-
-    chapter = FTBQuestsChapter.load(snbt_path)
-    for quest_index, quest in enumerate(chapter.quests):
-        if quest.title is not None:
-            result[config.get_title_key(chapter, quest, quest_index)] = quest.title
-        if quest.subtitle is not None:
-            result[config.get_subtitle_key(chapter, quest, quest_index)] = quest.subtitle
-        if quest.description is not None:
-            for desc_index, desc in enumerate(quest.description):
-                result[config.get_description_key(chapter, quest, quest_index, desc_index)] = desc
-
-    return json.dumps(result, indent=4)
