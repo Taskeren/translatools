@@ -48,6 +48,8 @@ class TranslatoolsMetadata:
     pack_description: Optional[str] = field(default=None)
     # ftbquests key generation config
     ftbquests_key_config: str | dict = field(default="default")
+    # Minecraft instance path (mcwd)
+    minecraft_instance_path: str = field(default="overrides")
 
     @staticmethod
     def load_from_path(path: Path) -> "TranslatoolsMetadata":

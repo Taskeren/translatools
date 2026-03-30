@@ -40,7 +40,7 @@ class Translatools:
 
     @property
     def mcwd(self):
-        return self.cwd / "overrides"  # FIXME: add a config for this
+        return self.cwd / self.config.minecraft_instance_path
 
     def save_config(self):
         TranslatoolsMetadata.write_to_path(self._conf_path, self.config)
@@ -56,7 +56,7 @@ class Translatools:
 
     def install(self):
         f = cursefetch.get_project_file(str(self.config.project_id), "latest")
-        cursefetch.download_project_file(f, "workspace", uncompress=True)
+        cursefetch.download_project_file_and_uncompress(f, "workspace")
 
     async def sync_to_paratranz_async(self, client: Paratranz):
         async with client:
