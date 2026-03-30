@@ -1,3 +1,4 @@
+import itertools
 import json
 from pathlib import Path
 from typing import Protocol, Iterable, Tuple, Any, IO
@@ -124,13 +125,15 @@ class FTBQuestsBuiltinLanguage(TranslationHandler):
 
     def get_paths(self, mcwd: Path, extra: dict) -> Iterable[Path]:
         source_lang = extra.get("source_lang", "en_us")
-        return mcwd.glob(f"config/ftbquests/quests/lang/{source_lang}/chapters/*.snbt")
+        chapters = mcwd.glob(f"config/ftbquests/quests/lang/{source_lang}/chapters/*.snbt")
+        direct_localization = mcwd.glob(f"config/ftbquests/quests/lang/{source_lang}.snbt")
+        return itertools.chain(chapters, direct_localization)
 
     def extract(self, mcwd: Path, extra: dict) -> Iterable[Tuple[Path, dict[str, str]]]:
         source_lang = extra.get("source_lang", "en_us")
         target_lang = extra.get("target_lang", "zh_cn")
         for snbt_path in self.get_paths(mcwd, extra):
-            target_path = Path(snbt_path.as_posix().replace(source_lang, target_lang))
+            target_path = Path(snbt_path.as_posix().replace(f"{source_lang}.snbt", f"{target_lang}.json"))
             yield target_path, self._generate_json(snbt_path)
 
     def assemble(self, mcwd: Path, translated: Iterable[Tuple[Path, dict[str, str]]], extra: dict):
