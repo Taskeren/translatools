@@ -1,10 +1,8 @@
 import json
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-import dacite
 import ftb_snbt_lib
 from dacite import from_dict
 
@@ -27,6 +25,7 @@ class FTBQuestsChapter:
     def load(snbt_path: Path) -> "FTBQuestsChapter":
         with open(snbt_path, encoding="utf-8") as f:
             snbt = ftb_snbt_lib.load(f)
+            # FIXME: find a better solution
             json_ = json.dumps(snbt)
             data = json.loads(json_)
             return from_dict(data_class=FTBQuestsChapter, data=data)

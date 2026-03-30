@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import overload, Literal
 
 import cursefetch
+import questionary
 
-from translatools.config import TranslatoolsMetadata, TrackedFile, FileType
+from translatools.config import TranslatoolsMetadata, TrackedItem
+from translatools.handler import TRANSLATION_HANDLERS
 from translatools.paratranz import Paratranz
 from translatools.translatools import Translatools
 
@@ -43,40 +45,44 @@ def main() -> None:
                       help="The CurseForge API key to use (can also be set via CF_API_KEY environment variable).")
     init.add_argument("--allow-non-empty-directory", action="store_true")
 
-    # sync2paratranz
-    sync2paratranz = subparser.add_parser("sync2paratranz")
-    sync2paratranz.add_argument("--api-key",
-                                help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
-    sync2paratranz.add_argument("--dry-run",
-                                help="Dump the files that would be uploaded or updated to the directory locally.",
-                                action="store_true")
+    # setup-wizard
+    setup_wizard = subparser.add_parser("setup-wizard")
 
-    # generate
-    generate = subparser.add_parser("generate")
-    generate.add_argument("--api-key",
+    # upload
+    upload = subparser.add_parser("upload", help="Upload the translation entries to Paratranz.")
+    upload.add_argument("--api-key",
+                        help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
+    upload.add_argument("--dry-run",
+                        help="Dump the files that would be uploaded or updated to the directory locally.",
+                        action="store_true")
+
+    # download
+    download = subparser.add_parser("download", help="Download the result of translated entries from Paratranz.")
+    download.add_argument("--api-key",
                           help="The Paratranz API key to use (can also be set via PARATRANZ_API_KEY environment variable.)")
-    generate.add_argument("--dump-json", help="Dump the merged JSON only.", action="store_true")
-    generate.add_argument("-o", "--output", help="The output path.", default=None)
-    generate.add_argument("--mode",
+    download.add_argument("-o", "--output", help="The output path.", default=".generated")
+    download.add_argument("--mode",
                           help="The selector of which entries should be dumped. 0 - Approved, 1 - Any translated, 2 - All.",
                           default="0")
 
     # tracked
-    tracked = subparser.add_parser("tracked")
+    tracked = subparser.add_parser("tracked", help="Manage the tracked items in the workspace.")
     tracked_subparser = tracked.add_subparsers(dest="tracked_command")
     # tracked - add
     tracked_add = tracked_subparser.add_parser("add")
-    tracked_add.add_argument("glob", help="The path or the glob to the files")
-    tracked_add.add_argument("type", help="The type of tracked files")
+    tracked_add.add_argument("type", help="The type of the entry")
+    tracked_add.add_argument("name", help="The name of the entry", default=None)
 
     args = parser.parse_args()
 
     match args.command:
         case "init":
             asyncio.run(_command_init(args))
-        case "sync2paratranz":
+        case "setup-wizard":
+            _command_setup_wizard(args)
+        case "upload":
             asyncio.run(_command_sync_to_paratranz(args))
-        case "generate":
+        case "download":
             asyncio.run(_command_generate(args))
         case "tracked":
             asyncio.run(_command_tracked(args))
@@ -143,57 +149,81 @@ async def _command_generate(args):
     para = Paratranz(os.environ.get("PARATRANZ_API_KEY", args.api_key))
     output_path = args.output
     mode = int(args.mode)
-    pack_format = translatools_.config.pack_format
-    pack_desc = translatools_.config.pack_description
-    if pack_desc is None:
-        pack_desc = "§bTranslatools Generated"
-    if args.dump_json:
-        # dump as JSON only
-        if output_path is None:
-            output_path = ".dump.json"
-        output = Path(output_path)
-        await translatools_.dump_translated_to(para, output, mode)
-        print(f"Dumped JSON to {output} in mode {mode}")
-    else:
-        if output_path is None:
-            output_path = ".dump.zip"
-        output = Path(output_path)
-        await translatools_.dump_translated_zip(para, output, mode, pack_format=pack_format, pack_description=pack_desc)
-        print(f"Dumped resourcepack to {output} in mode {mode}")
+    # pack_format = translatools_.config.pack_format
+    # pack_desc = translatools_.config.pack_description
+    # if pack_desc is None:
+    #     pack_desc = "§bTranslatools Generated"
+    # TODO: resourcepack mode
+
+    await translatools_.dump_translated(para, Path(output_path), mode)
+    print(f"Result dumped to {output_path}")
 
 
 async def _command_tracked(args):
     translatools_ = _get_translatools_from_args(args, True)
-    cwd = translatools_.cwd()
+    mcwd = translatools_.mcwd
 
     match args.tracked_command:
         case "add":
-            glob = args.glob
             type_ = args.type
+            name = args.name
 
-            if glob is None:
-                sys.exit("Argument glob is missing")
             if type_ is None:
                 sys.exit("Argument type is missing")
-            try:
-                FileType(type_)
-            except ValueError:
-                sys.exit("Argument type is invalid")
+            elif type_ not in TRANSLATION_HANDLERS.keys():
+                sys.exit(f"Argument type is invalid, expected one of {TRANSLATION_HANDLERS.keys()}")
+            if name is None:
+                sys.exit("Argument name is missing")
 
-            tracked_file = TrackedFile(glob, type_)
-            translatools_.config.tracked_files.append(tracked_file)
+            tracked_item = TrackedItem(type_, name)
+            translatools_.config.tracked_items.append(tracked_item)
             translatools_.save_config()
-            print(f"Added tracked: '{tracked_file.path}' as {tracked_file.type}")
-            tracked_paths = "\n".join(f"- {p.absolute().as_posix()}" for p in tracked_file.get_paths(cwd))
+            print(f"Added tracked: '{tracked_item.get_name()}'")
+            tracked_paths = "\n".join(
+                f"- {p.absolute().as_posix()}" for p in tracked_item.handler.get_paths(mcwd, tracked_item.extra))
             print(tracked_paths)
         case _:
-            if len(translatools_.config.tracked_files) <= 0:
+            if len(translatools_.config.tracked_items) <= 0:
                 print("Tracked nothing?! Add something by 'translatools tracked add'")
             else:
-                for tracked_file in translatools_.config.tracked_files:
-                    print(f"Tracked: '{tracked_file.path}' as {tracked_file.type}")
-                    # the paths that matches
-                    tracked_paths = "\n".join(f"- {p.absolute().as_posix()}" for p in tracked_file.get_paths(cwd))
+                for tracked_item in translatools_.config.tracked_items:
+                    print(f"Tracked item: {tracked_item.type} with extra {tracked_item.extra}")
+                    h = tracked_item.handler
+                    tracked_paths = "\n".join(
+                        f"- {p.absolute().as_posix()}" for p in h.get_paths(mcwd, tracked_item.extra))
                     print(tracked_paths)
-                    # separator
                     print()
+
+
+def _command_setup_wizard(args):
+    translatools_ = _get_translatools_from_args(args, exit_on_invalid_path=True)
+
+    def add_handler(type_: str, name: str):
+        if type_ not in TRANSLATION_HANDLERS.keys():
+            raise ValueError(f"{type_} is not a valid type, report this bug!")
+        tracked_item = TrackedItem(type_, name)
+        translatools_.config.tracked_items.append(tracked_item)
+        tracked_path = "\n".join(
+            [f"- {path.absolute()}" for path in tracked_item.handler.get_paths(translatools_.mcwd, tracked_item.extra)])
+        print("Added tracked paths:")
+        print(tracked_path)
+
+    kubejs_assets_path = translatools_.mcwd / "kubejs" / "assets"
+    if kubejs_assets_path.exists():
+        if questionary.confirm("KubeJS Assets found, do you want to handle this?").ask():
+            add_handler("kubejs_assets", "KubeJS Assets")
+
+    ftbquests_path = translatools_.mcwd / "config" / "ftbquests" / "quests"
+    ftbquests_lang_path = ftbquests_path / "lang"
+    if ftbquests_lang_path.exists():
+        if questionary.confirm("FTBQuests builtin localization found, do you want to handle this?").ask():
+            add_handler("ftbquests_builtin_lang", "FTBQuests")
+    elif ftbquests_path.exists():
+        if questionary.confirm(
+                "FTBQuests found, but not the 'lang' directory. Do you still want to handle this?").ask():
+            add_handler("ftbquests_builtin_lang", "FTBQuests")
+        elif questionary.confirm("If the Minecraft is 1.20.1, do you want to use FTBQuests Forcibly Translated?").ask():
+            add_handler("ftbquests_forcibly_translated", "FTBQuests")
+
+    translatools_.save_config()
+    print("Setup Wizard completed!")
