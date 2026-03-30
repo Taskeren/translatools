@@ -3,6 +3,7 @@ import asyncio
 import json
 import os.path
 import sys
+import traceback
 from dataclasses import asdict
 from pathlib import Path
 from typing import overload, Literal
@@ -17,9 +18,14 @@ from translatools.translatools import Translatools
 def main() -> None:
     print("Hello from translatools!")
 
-    # don't load_dotenv() here, because we will load the dotenv in the Translatools constructor,
-    # so that we can properly load the dotenv file in the same directory of the configuration file.
-    # load_dotenv()
+    # load env from ~/.translatools.rc
+    try:
+        user_env = Path.home() / ".translatools.rc"
+        if user_env.exists():
+            from dotenv import load_dotenv
+            load_dotenv(user_env)
+    except Exception as e:
+        traceback.print_exception(e)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="The configuration of the instance.", default="config.json")
