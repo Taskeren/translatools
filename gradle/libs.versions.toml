@@ -1,12 +1,15 @@
 [versions]
-kotlin = "2.3.21"
+kotlin = "2.4.0"
 ktor = "3.5.0"
 slf4j = "2.0.18"
+kotlinx-serialization = "1.11.0"
+shadow = "9.4.2"
 
 [libraries]
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 
 ktor-serialization-kotlinxJson = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
@@ -15,5 +18,15 @@ clikt = { module = "com.github.ajalt.clikt:clikt", version = "5.0.1" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" }
 
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.33" }
+
+kotlinx-serialization-core = { module = "rg.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.8.0" }
+
+jspecify = { module = "org.jspecify:jspecify", version = "1.0.0" }
+
+dotenv = { module = "io.github.cdimascio:dotenv-java", version = "3.2.0" }
+
 [plugins]
-shadow = { id = "com.gradleup.shadow", version = "9.4.2" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

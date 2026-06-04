@@ -3,7 +3,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
-    alias(libs.plugins.shadow)
+    id("com.gradleup.shadow")
 }
 
 repositories {
@@ -24,6 +24,13 @@ val standaloneRuntimeOnly: Configuration by configurations.getting {
     extendsFrom(configurations.runtimeOnly.get())
 }
 
+// the configuration of standalone for dependant subprojects
+val standaloneApiElements: Configuration by configurations.creating {
+    isCanBeResolved = false
+    isCanBeConsumed = true
+    extendsFrom(standaloneImplementation)
+}
+
 dependencies {
     api(libs.ktor.client.core)
 
@@ -37,8 +44,17 @@ dependencies {
     standaloneImplementation(libs.slf4j.nop)
 }
 
+val standaloneJarThin =
+    tasks.register<Jar>("standaloneJarThin") {
+        group = "standalone"
+        description = "Assemble a thin jar for standalone"
+        archiveClassifier.set("standalone-thin")
+        from(sourceSets.main.get().output)
+        from(standalone.output)
+    }
+
 tasks.register<ShadowJar>("standaloneJar") {
-    group = "shadow"
+    group = "standalone"
     description = "Create a fat-jar for standalone"
 
     archiveClassifier = "standalone"
@@ -49,4 +65,8 @@ tasks.register<ShadowJar>("standaloneJar") {
     from(standalone.output)
     configurations = listOf(project.configurations.named("standaloneRuntimeClasspath").get())
     mergeServiceFiles()
+}
+
+artifacts {
+    add("standaloneApiElements", standaloneJarThin)
 }

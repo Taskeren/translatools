@@ -13,6 +13,7 @@ import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import io.ktor.client.*
 import kotlinx.coroutines.flow.take
+import org.jetbrains.annotations.ApiStatus
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -33,12 +34,18 @@ private fun createClient(): CurseForgeClient {
 
 suspend fun main(args: Array<String>) = CurseFetchCommand().main(args)
 
-private class CurseFetchCommand : SuspendingCliktCommand() {
+class CurseFetchCommand : SuspendingCliktCommand() {
     init {
         subcommands(ListFiles(), DownloadFile())
     }
 
+    @ApiStatus.Internal
+    fun getClient(): CurseForgeClient = client
+
+    val apiKey by option("-k", "--key", "--api-key", help = "API key of CurseForge.", envvar = "CURSEFETCH_TOKEN")
+
     override suspend fun run() {
+        apiKey?.let { client.apiKey = it }
     }
 
     class ListFiles : SuspendingCliktCommand() {
