@@ -11,5 +11,13 @@ internal object Checksum {
         return md.digest()
     }
 
+    fun md5(data: String): ByteArray {
+        val md = MessageDigest.getInstance("MD5")
+        md.update(data.toByteArray())
+        return md.digest()
+    }
+
     fun md5String(path: Path): String = md5(path).toHexString()
+
+    fun md5String(value: String): String = md5(value).toHexString()
 }

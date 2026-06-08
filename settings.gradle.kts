@@ -6,3 +6,10 @@ rootProject.name = "translatools"
 
 include("cursefetch")
 include("translatools")
+
+// TODO: remove this
+includeBuild("vendor/HelloNBT") {
+    dependencySubstitution {
+        substitute(module("com.github.Taskeren:HelloNBT")).using(project(":"))
+    }
+}

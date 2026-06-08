@@ -42,7 +42,7 @@ internal object LangHandler : Handler<MutableList<LanguageLine>> {
     }
 
     context(output: TranslationOutputManager)
-    override fun saveData(data: MutableList<LanguageLine>) {
+    override fun saveData(data: MutableList<LanguageLine>, sourcesPath: Path) {
         output.addLanguageMap(data.filterIsInstance<KeyValueLine>().associate { (key, value) -> key to value })
     }
 

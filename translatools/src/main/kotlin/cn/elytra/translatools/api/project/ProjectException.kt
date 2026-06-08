@@ -66,3 +66,9 @@ public class ParatranzSyncException(
     public val path: Path,
     cause: Throwable,
 ) : ProjectException("Failed to synchronize path $path", cause)
+
+public class UploadHashMismatchException(
+    public val path: Path,
+    localHash: String,
+    remoteHash: String,
+) : ProjectException("Mismatched hash (local = $localHash, remote = $remoteHash) uploading path $path")

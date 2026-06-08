@@ -33,7 +33,7 @@ internal object JsonHandler : Handler<MutableMap<String, String>> {
     }
 
     context(output: TranslationOutputManager)
-    override fun saveData(data: MutableMap<String, String>) {
+    override fun saveData(data: MutableMap<String, String>, sourcesPath: Path) {
         output.addLanguageMap(data)
     }
 

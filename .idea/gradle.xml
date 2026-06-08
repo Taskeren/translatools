@@ -12,6 +12,16 @@
                   <project path="$PROJECT_DIR$/buildSrc" />
                 </projects>
               </build>
+              <build path="$PROJECT_DIR$/vendor/HelloNBT" name="HelloNBT">
+                <projects>
+                  <project path="$PROJECT_DIR$/vendor/HelloNBT" />
+                </projects>
+              </build>
+              <build path="$PROJECT_DIR$/vendor/HelloNBT/buildSrc" name="buildSrc">
+                <projects>
+                  <project path="$PROJECT_DIR$/vendor/HelloNBT/buildSrc" />
+                </projects>
+              </build>
             </builds>
           </compositeBuild>
         </compositeConfiguration>
@@ -22,6 +32,8 @@
             <option value="$PROJECT_DIR$/buildSrc" />
             <option value="$PROJECT_DIR$/cursefetch" />
             <option value="$PROJECT_DIR$/translatools" />
+            <option value="$PROJECT_DIR$/vendor/HelloNBT" />
+            <option value="$PROJECT_DIR$/vendor/HelloNBT/buildSrc" />
           </set>
         </option>
         <option name="myGradleHome" value="" />

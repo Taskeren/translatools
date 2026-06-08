@@ -55,3 +55,8 @@ internal fun <K, V, T> Map<K, V>.groupEntriesBy(selector: (Map.Entry<K, V>) -> T
     entries
         .groupBy<Map.Entry<K, V>, T> { selector(it) }
         .mapValues { (_, entries) -> entries.associate { (key, value) -> key to value } }
+
+internal inline fun <T> Result<T>.expected(block: (Throwable) -> Throwable): T {
+    onFailure { throw block(it) }
+    return getOrThrow()
+}

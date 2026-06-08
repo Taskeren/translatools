@@ -24,7 +24,6 @@ import cn.elytra.translatools.internal.utils.PathSerializer
 import cn.elytra.translatools.internal.utils.decodeFromStringFromPath
 import cn.elytra.translatools.internal.utils.encodeToStringToPath
 import cn.elytra.translatools.internal.utils.forEachCoroutineScope
-import io.github.cdimascio.dotenv.Dotenv
 import io.ktor.client.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -100,7 +99,7 @@ public class Project(
     /**
      * Walk the paths in the sources that are matching the glob of the handler.
      */
-    private fun FileHandler.asSequence(): Sequence<@PathMarker.Absolute Path> = resolveGlob(glob)
+    private fun FileHandler.asSequence(): Sequence<@PathMarker.Absolute Path> = glob.asSequence().flatMap { resolveGlob(it) }
 
     private fun loadIndex() {
         if (indexPath.exists()) {
@@ -161,7 +160,8 @@ public class Project(
                 FileHandler,
             >()
         config.handlers.forEach { fileHandler ->
-            console.info { "$TRI_R ${fileHandler.uses.name} ${fileHandler.glob}" }
+            console.info { "$TRI_R ${fileHandler.uses.name}" }
+            fileHandler.glob.forEach { console.info { "$TRI_RH $it" } }
             val handler = fileHandler.uses
             var anyMatched = false
             fileHandler
@@ -201,7 +201,10 @@ public class Project(
                     }
                 }
             if (!anyMatched) {
-                console.warn { "$TRI_RH ${fileHandler.uses} ${fileHandler.glob} doesn't match anything" }
+                console.warn {
+                    val globString = fileHandler.glob.joinToString(", ", "[", "]")
+                    "$TRI_RH ${fileHandler.uses} $globString doesn't match anything"
+                }
             }
         }
         pathsMissing.forEach { path ->
@@ -251,11 +254,14 @@ public class Project(
     internal suspend fun consoleUploadRemote(
         deleteUnindexedFiles: Boolean = false,
         dryRun: Boolean = false,
+        dryRunHandler: Boolean = false,
+        checkHash: Boolean,
+        forceUpdate: Boolean,
     ) {
         val paratranz = paratranz
         val projectId = paratranzProjectId()
 
-        val storage = RemoteAssociatedIndexedFileStorage(index, paratranz.getFileList(projectId))
+        val storage = RemoteAssociatedIndexedFileStorage(index, paratranz.getFileList(projectId).removeJsonExtension())
         val allStatus = storage.allByStatus()
 
         /**
@@ -272,7 +278,7 @@ public class Project(
         }
 
         // update existing in both
-        val toUpdate = allStatus[Status.MODIFIED] + allStatus[Status.UNMODIFIED]
+        val toUpdate = allStatus[Status.MODIFIED] + allStatus[Status.UNMODIFIED].takeIf { forceUpdate }
         console.info { "$TRI_R Updating existing paths (${toUpdate?.size ?: 0})" }
         toUpdate?.forEachDecompositedSuspend { path, local, remote ->
             checkNotNull(local)
@@ -286,12 +292,18 @@ public class Project(
                     console.warn(e) { "$NO Failed to generate translation data for path $path" }
                     return@forEachDecompositedSuspend
                 }
+            if (dryRunHandler) {
+                console.info { data }
+                return@forEachDecompositedSuspend
+            }
 
             console.info { "$ARROW_R $path" }
             wetRun {
-                val response = paratranz.updateFile(projectId, remote.id, data, path.name)
+                val localHash = md5String(data)
+                val response = paratranz.updateFile(projectId, remote.id, data, path.name.appendJsonExtension())
                 // update index
                 if (response is Paratranz.FileUpdateResponse.Uploaded) {
+                    if (checkHash) checkHash(path, localHash, response.data.file.hash)
                     local.lastUploadHash = response.data.file.hash
                 } else {
                     console.info { "$ARROW_RET $path doesn't have content update" }
@@ -312,10 +324,16 @@ public class Project(
                     console.warn(e) { "$NO Failed to generate translation data for path $path" }
                     return@forEachDecompositedSuspend
                 }
+            if (dryRunHandler) {
+                console.info { data }
+                return@forEachDecompositedSuspend
+            }
 
             console.info { "$ARROW_R $path" }
             wetRun {
-                val response = paratranz.uploadFile(projectId, data, path)
+                val localHash = md5String(data)
+                val response = paratranz.uploadFile(projectId, data, path.appendJsonExtension())
+                if (checkHash) checkHash(path, localHash, response.file.hash)
                 // update index
                 local.lastUploadHash = response.file.hash
             }
@@ -349,7 +367,7 @@ public class Project(
         val paratranz = paratranz
         val projectId = paratranzProjectId()
 
-        val storage = RemoteAssociatedIndexedFileStorage(index, paratranz.getFileList(projectId))
+        val storage = RemoteAssociatedIndexedFileStorage(index, paratranz.getFileList(projectId).removeJsonExtension())
 
         index.forEachCoroutineScope { local ->
             val path = local.path
@@ -369,9 +387,13 @@ public class Project(
                 }
 
             context(output) {
-                val handler = local.handler.get()
-                handler.assembleTranslated(sourcesDirectory / path, translation)
-                console.info { "$DIAMOND_V $path assembled" }
+                try {
+                    val handler = local.handler.get()
+                    handler.assembleTranslated(sourcesDirectory, path, translation)
+                    console.info { "$DIAMOND_V $path assembled" }
+                } catch (e: Exception) {
+                    console.warn(e) { "$NO Failed to assemble $path" }
+                }
             }
         }
     }
@@ -405,4 +427,22 @@ private operator fun <K, V> Map<K, V>?.plus(other: Map<K, V>?): Map<K, V>? {
     if (this == null) return other
     if (other == null) return this
     return LinkedHashMap(this).apply { putAll(other) }
+}
+
+private fun Path.appendJsonExtension(): Path = if (this.extension != "json") Path(this.pathString + ".json") else this
+
+private fun String.appendJsonExtension(): String = if (!this.endsWith(".json")) "$this.json" else this
+
+private fun List<Paratranz.File>.removeJsonExtension(): List<Paratranz.File> =
+    map {
+        val name = it.name.replace(Regex("""^(.*\..+)\.json$""", RegexOption.IGNORE_CASE), "$1")
+        if (name != it.name) it.copy(name = name) else it
+    }
+
+private fun checkHash(
+    path: Path,
+    localHash: String,
+    remoteHash: String,
+) {
+    if (localHash != remoteHash) throw UploadHashMismatchException(path, localHash, remoteHash)
 }

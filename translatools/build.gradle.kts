@@ -1,6 +1,3 @@
-import org.gradle.kotlin.dsl.kotlin
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
@@ -9,6 +6,12 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven("https://jitpack.io") {
+        mavenContent {
+            @Suppress("UnstableApiUsage")
+            includeGroupAndSubgroups("com.github")
+        }
+    }
 }
 
 dependencies {
@@ -24,6 +27,9 @@ dependencies {
 
     implementation(libs.dotenv)
 
+    implementation(libs.ftbsnbt)
+    implementation(libs.hellonbt.taskeren)
+
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.client.logging)
     testImplementation(libs.logback.classic)
@@ -32,11 +38,16 @@ dependencies {
     standaloneImplementation(project(path = ":cursefetch", configuration = "standaloneApiElements"))
 }
 
+configurations.all {
+    resolutionStrategy.dependencySubstitution {
+        // substitute(module("org.glavo:HelloNBT")) using module("com.github.Taskeren:HelloNBT:13593c05b3")
+    }
+}
+
 kotlin {
     explicitApiWarning()
 
     compilerOptions {
-        freeCompilerArgs.addAll("-Xcontext-parameters", "-Xexplicit-backing-fields")
     }
 }
 

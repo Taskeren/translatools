@@ -17,8 +17,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.path
 import io.github.cdimascio.dotenv.Dotenv
 import java.nio.file.Path
+import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
+import kotlin.io.path.deleteRecursively
 import kotlin.io.path.div
 import kotlin.io.path.notExists
 import kotlin.io.path.pathString
@@ -154,7 +156,12 @@ private class TranslatoolsCommand : SuspendingCliktCommand() {
             "--delete-unindexed-files",
             help = "Whether to delete the unindexed (locally removed) files",
         ).flag()
+        val forceUpdate by option("-f", "--force-update", help = "Whether to update the unmodified paths").flag()
         val dryRun by option(help = "Simulate the operation").flag()
+        val checkHash by option(help = "Whether panic on hash mismatch on uploading/updating").flag()
+
+        // write the result of handlers to the stdout. better write them to a file, because the buffer of consoles usually can't handle the size.
+        val dryRunHandler by option(hidden = true).flag()
 
         override fun help(context: Context): String = "Extract the translation entries and upload/update to remote"
 
@@ -162,7 +169,7 @@ private class TranslatoolsCommand : SuspendingCliktCommand() {
             val p = Project.current(context.workingDir)
 
             context(ConsoleLogger.CONSOLE) {
-                p.consoleUploadRemote(deleteUnindexedFiles, dryRun)
+                p.consoleUploadRemote(deleteUnindexedFiles, dryRun, dryRunHandler, checkHash, forceUpdate)
             }
         }
     }
@@ -175,12 +182,19 @@ private class TranslatoolsCommand : SuspendingCliktCommand() {
         val exportLocked by option("-l", "--locked", help = "Whether export locked entries.").flag()
         val exportHidden by option("-h", "--hidden", help = "Whether export hidden entries.").flag()
 
+        val deleteExisting by option("-d", "--delete-existing", help = "Whether delete existing directories.").flag()
+
         override fun help(context: Context): String = "Download and assemble the translation entries"
 
         override suspend fun run() {
             val p = Project.current(context.workingDir)
 
-            val output = TranslationOutputManager(Path("./translation"))
+            val translationDirectory = Path("./translation")
+            if (deleteExisting) {
+                @OptIn(ExperimentalPathApi::class)
+                translationDirectory.deleteRecursively()
+            }
+            val output = TranslationOutputManager(translationDirectory)
             val leastStage =
                 exportStage?.let { TranslationStage.valueOf(it) } ?: TranslationStage.TRANSLATED
             if (leastStage !in TranslationStage.normalStages) {

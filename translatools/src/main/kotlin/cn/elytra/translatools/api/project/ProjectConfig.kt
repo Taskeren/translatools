@@ -2,6 +2,7 @@ package cn.elytra.translatools.api.project
 
 import cn.elytra.translatools.api.annotation.PathMarker
 import cn.elytra.translatools.api.handler.HandlerName
+import cn.elytra.translatools.internal.utils.OneOrMoreSerializer
 import cn.elytra.translatools.internal.utils.PathSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -22,7 +23,8 @@ public data class ProjectConfig(
 @Serializable
 public data class FileHandler(
     val uses: HandlerName,
-    val glob: String,
+    @Serializable(with = OneOrMoreSerializer.StringSerializer::class)
+    val glob: List<String>,
     val with: JsonObject? = null,
 )
 

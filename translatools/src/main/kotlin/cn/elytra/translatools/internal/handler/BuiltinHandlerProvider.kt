@@ -8,6 +8,7 @@ internal class BuiltinHandlerProvider : HandlerProvider {
         mapOf(
             "json" to JsonHandler,
             "lang" to LangHandler,
+            "snbt" to SnbtHandler,
         )
 
     // lower the builtin ones, so that others may override them

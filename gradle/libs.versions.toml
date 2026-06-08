@@ -28,5 +28,9 @@ jspecify = { module = "org.jspecify:jspecify", version = "1.0.0" }
 
 dotenv = { module = "io.github.cdimascio:dotenv-java", version = "3.2.0" }
 
+ftbsnbt = { module = "com.github.Taskeren:FTB-SNBT", version = "0.0.1-alpha.3" }
+hellonbt = { module = "org.glavo:HelloNBT", version = "0.3.0" }
+hellonbt-taskeren = { module = "com.github.Taskeren:HelloNBT", version = "13593c05b3" }
+
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

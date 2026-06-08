@@ -1,0 +1,4 @@
+[submodule "vendor/HelloNBT"]
+	path = vendor/HelloNBT
+	url = git@github.com:Taskeren/HelloNBT.git
+	ignore = all

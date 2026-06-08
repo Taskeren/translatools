@@ -4,6 +4,7 @@ import cn.elytra.translatools.api.annotation.PathMarker.Relative
 import cn.elytra.translatools.internal.SharedObjects
 import io.ktor.utils.io.charsets.Charset
 import java.nio.file.Path
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.*
 import kotlin.text.Charsets
@@ -11,6 +12,9 @@ import kotlin.text.Charsets
 public class TranslationOutputManager(
     public val translationDirectory: Path,
     public val duplicatedKeyStrategy: DuplicatedKeyStrategy = DuplicatedKeyStrategy.PANIC,
+    public val sourcesLocale: Locale = Locale.US,
+    public val translationLocale: Locale = Locale.SIMPLIFIED_CHINESE,
+    public val localeInLowercase: Boolean = true,
 ) {
     private val json = SharedObjects.encodingJson
     private val languageMap: MutableMap<String, String> = ConcurrentHashMap()
@@ -83,6 +87,11 @@ public class TranslationOutputManager(
             addBinaryContent(path, byteArray)
         }
     }
+
+    public fun Path.replaceLocale(): Path = Path(this.pathString.replace(sourcesLocale.code, translationLocale.code))
+
+    // either en_US or en_us depends on localeInLowercase
+    private val Locale.code get() = toString().let { if (localeInLowercase) it.lowercase() else it }
 }
 
 private val Path.isRelative: Boolean get() = !isAbsolute

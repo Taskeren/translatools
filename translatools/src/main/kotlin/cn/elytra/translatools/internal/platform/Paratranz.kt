@@ -32,7 +32,6 @@ private const val API_BASE = "https://paratranz.cn/api"
 internal class Paratranz(
     var token: String,
     httpClient: HttpClient,
-    json: Json = Json,
 ) {
     private val httpClient =
         httpClient.config {
@@ -401,11 +400,10 @@ internal class Paratranz(
                 val decoder = decoder as JsonDecoder
                 val root = decoder.decodeJsonElement().jsonObject
 
-                if (root.containsKey("status") && root.getValue("status").jsonPrimitive.content == "hashMatched") {
-                    return HashMatched
+                return if (root.containsKey("status") && root.getValue("status").jsonPrimitive.content == "hashMatched") {
+                    HashMatched
                 } else {
-                    println(root)
-                    return Uploaded(Json.decodeFromJsonElement<FileUploadResponse>(root))
+                    Uploaded(Json.decodeFromJsonElement<FileUploadResponse>(root))
                 }
             }
         }
