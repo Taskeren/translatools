@@ -1,34 +1,12 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     alias(libs.plugins.shadow)
+    id("com.github.taskeren.standalone")
 }
 
 repositories {
     mavenCentral()
-}
-
-val standalone: SourceSet =
-    sourceSets.create("standalone") {
-        compileClasspath += sourceSets.main.get().compileClasspath
-        runtimeClasspath += sourceSets.main.get().runtimeClasspath
-    }
-
-val standaloneImplementation: Configuration by configurations.getting {
-    extendsFrom(configurations.implementation.get())
-}
-
-val standaloneRuntimeOnly: Configuration by configurations.getting {
-    extendsFrom(configurations.runtimeOnly.get())
-}
-
-// the configuration of standalone for dependant subprojects
-val standaloneApiElements: Configuration by configurations.creating {
-    isCanBeResolved = false
-    isCanBeConsumed = true
-    extendsFrom(standaloneImplementation)
 }
 
 dependencies {
@@ -42,31 +20,4 @@ dependencies {
     standaloneImplementation(sourceSets.main.get().output)
     standaloneImplementation(libs.clikt)
     standaloneImplementation(libs.slf4j.nop)
-}
-
-val standaloneJarThin =
-    tasks.register<Jar>("standaloneJarThin") {
-        group = "standalone"
-        description = "Assemble a thin jar for standalone"
-        archiveClassifier.set("standalone-thin")
-        from(sourceSets.main.get().output)
-        from(standalone.output)
-    }
-
-tasks.register<ShadowJar>("standaloneJar") {
-    group = "standalone"
-    description = "Create a fat-jar for standalone"
-
-    archiveClassifier = "standalone"
-    manifest {
-        attributes["Main-Class"] = "cn.elytra.translatools.cursefetch.CurseFetchKt"
-    }
-    from(sourceSets.main.get().output)
-    from(standalone.output)
-    configurations = listOf(project.configurations.named("standaloneRuntimeClasspath").get())
-    mergeServiceFiles()
-}
-
-artifacts {
-    add("standaloneApiElements", standaloneJarThin)
 }

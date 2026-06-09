@@ -2,7 +2,7 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     alias(libs.plugins.shadow)
-    id("com.github.taskeren.standalone") version "544245ee43"
+    id("com.github.taskeren.standalone")
 }
 
 repositories {
