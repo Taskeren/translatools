@@ -1,9 +1,9 @@
 package cn.elytra.translatools.internal.handler
 
 import cn.elytra.ftbsnbt.SNBT
-import cn.elytra.translatools.api.handler.Handler
+import cn.elytra.translatools.api.TranslationOutputManager
+import cn.elytra.translatools.api.handler.DataHandler
 import cn.elytra.translatools.api.handler.TranslationItem
-import cn.elytra.translatools.api.handler.TranslationOutputManager
 import cn.elytra.translatools.internal.utils.expected
 import org.glavo.nbt.NBTPath
 import org.glavo.nbt.internal.path.NBTPathImpl
@@ -14,7 +14,7 @@ import java.nio.file.Path
 import java.util.*
 import kotlin.io.path.readLines
 
-internal object SnbtHandler : Handler<CompoundTag> {
+internal object SnbtHandler : DataHandler<CompoundTag> {
     private val panicNonStringTag = System.getProperty("handler.snbt.panicNonStringTag").toBoolean()
 
     override fun loadData(path: Path): CompoundTag = SNBT.readLines(path.readLines())
@@ -75,9 +75,9 @@ internal object SnbtHandler : Handler<CompoundTag> {
     }
 }
 
-private fun Tag.walk(): Sequence<ValueTag<*>> = walkAny().filterIsInstance<ValueTag<*>>()
+internal fun Tag.walk(): Sequence<ValueTag<*>> = walkAny().filterIsInstance<ValueTag<*>>()
 
-private fun Tag.walkAny(): Sequence<Tag> =
+internal fun Tag.walkAny(): Sequence<Tag> =
     sequence {
         val queue = ArrayDeque<Tag>().also { it.add(this@walkAny) }
         while (queue.isNotEmpty()) {
@@ -90,7 +90,7 @@ private fun Tag.walkAny(): Sequence<Tag> =
 /**
  * Walk the whole tag tree, depth-first.
  */
-private fun ParentTag<*>.walkPath(): Sequence<Pair<NBTPath<ValueTag<*>>, ValueTag<*>>> =
+internal fun ParentTag<*>.walkPath(): Sequence<Pair<NBTPath<ValueTag<*>>, ValueTag<*>>> =
     sequence {
         // stack of path nodes and the tag
         val stack =

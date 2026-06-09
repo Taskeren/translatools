@@ -1,7 +1,7 @@
 package cn.elytra.translatools
 
 import cn.elytra.translatools.api.handler.Handler
-import cn.elytra.translatools.api.handler.TranslationOutputManager
+import cn.elytra.translatools.api.TranslationOutputManager
 import cn.elytra.translatools.api.project.Project
 import cn.elytra.translatools.api.utils.ConsoleLogger
 import cn.elytra.translatools.cursefetch.CurseFetchCommand

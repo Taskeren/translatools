@@ -12,7 +12,7 @@ public interface HandlerProvider {
      * Provide named handlers.
      * The keys are the name of the handler.
      */
-    Map<String, Handler<?>> provide();
+    Map<String, Handler> provide();
 
     /**
      * The loading priority.

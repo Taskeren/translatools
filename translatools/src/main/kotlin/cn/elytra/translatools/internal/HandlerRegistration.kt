@@ -8,10 +8,9 @@ import java.util.*
 /**
  * The registration of [Handler].
  */
-@PublishedApi // for getByName<T>()
 internal object HandlerRegistration {
     private val log = LoggerFactory.getLogger(HandlerRegistration::class.java)
-    private val handlers: MutableMap<String, Handler<*>> = mutableMapOf()
+    private val handlers: MutableMap<String, Handler> = mutableMapOf()
 
     init {
         // load providers
@@ -36,7 +35,7 @@ internal object HandlerRegistration {
 
     fun register(
         name: String,
-        handler: Handler<*>,
+        handler: Handler,
     ) {
         if (handlers.containsKey(name)) {
             error("Handler $name already registered!")
@@ -44,11 +43,7 @@ internal object HandlerRegistration {
         handlers[name] = handler
     }
 
-    fun getByName(name: String): Handler<*>? = handlers[name]
+    fun getByName(name: String): Handler? = handlers[name]
 
-    @Suppress("UNCHECKED_CAST")
-    @JvmName("+getByName")
-    inline fun <reified T> getByName(name: String): Handler<T>? = getByName(name) as? Handler<T>
-
-    fun listAll(): Map<String, Handler<*>> = handlers.toMap()
+    fun listAll(): Map<String, Handler> = handlers.toMap()
 }

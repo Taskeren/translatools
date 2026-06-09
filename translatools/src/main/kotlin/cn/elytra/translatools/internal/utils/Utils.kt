@@ -6,8 +6,12 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.json.Json
 import org.jetbrains.annotations.Contract
 import java.nio.charset.Charset
+import java.nio.file.FileSystem
+import java.nio.file.FileSystems
 import java.nio.file.Path
 import kotlin.io.path.readText
+import kotlin.io.path.relativeTo
+import kotlin.io.path.walk
 import kotlin.io.path.writeText
 
 internal inline fun <reified T> Json.encodeToStringToPath(
@@ -59,4 +63,9 @@ internal fun <K, V, T> Map<K, V>.groupEntriesBy(selector: (Map.Entry<K, V>) -> T
 internal inline fun <T> Result<T>.expected(block: (Throwable) -> Throwable): T {
     onFailure { throw block(it) }
     return getOrThrow()
+}
+
+internal fun Path.walkGlob(glob: String = "*"): Sequence<Path> {
+    val matcher = fileSystem.getPathMatcher("glob:$glob")
+    return walk().filter { matcher.matches(it.relativeTo(this@walkGlob)) }
 }

@@ -16,8 +16,5 @@ public value class HandlerName(
         if (Handler.getByName(name) == null) throw MissingHandlerException(name)
     }
 
-    public fun get(): Handler<*> = Handler.getByName(name) ?: throw MissingHandlerException(name)
-
-    // @JvmName can't be used on top of this.
-    public inline fun <reified T> getAs(): Handler<T> = Handler.getByName<T>(name) ?: throw MissingHandlerException(name)
+    public fun get(): Handler = Handler.getByName(name) ?: throw MissingHandlerException(name)
 }

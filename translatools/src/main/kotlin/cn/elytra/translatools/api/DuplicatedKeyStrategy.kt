@@ -1,4 +1,4 @@
-package cn.elytra.translatools.api.handler
+package cn.elytra.translatools.api
 
 public enum class DuplicatedKeyStrategy {
     DROP_OLD {

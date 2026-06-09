@@ -1,6 +1,7 @@
 package cn.elytra.translatools.api.project
 
 import cn.elytra.translatools.api.annotation.PathMarker
+import cn.elytra.translatools.api.handler.ExtractContext
 import cn.elytra.translatools.api.handler.HandlerName
 import cn.elytra.translatools.internal.utils.OneOrMoreSerializer
 import cn.elytra.translatools.internal.utils.PathSerializer
@@ -32,3 +33,6 @@ public data class FileHandler(
 public data class ParatranzConfig(
     val projectId: Int,
 )
+
+context(project: Project)
+internal fun FileHandler.asExtractContext(): ExtractContext = ExtractContext(project, this.glob, this.with)

@@ -1,9 +1,11 @@
 package cn.elytra.translatools.api.project
 
+import cn.elytra.translatools.api.TranslationOutputManager
 import cn.elytra.translatools.api.annotation.PathMarker
 import cn.elytra.translatools.api.annotation.PathMarker.Relative
 import cn.elytra.translatools.api.handler.*
 import cn.elytra.translatools.api.utils.ConsoleLogger
+import cn.elytra.translatools.api.utils.ProjectPath
 import cn.elytra.translatools.api.utils.info
 import cn.elytra.translatools.api.utils.warn
 import cn.elytra.translatools.internal.RemoteAssociatedIndexedFileStorage
@@ -11,12 +13,9 @@ import cn.elytra.translatools.internal.RemoteAssociatedIndexedFileStorage.Status
 import cn.elytra.translatools.internal.SharedObjects
 import cn.elytra.translatools.internal.Symbols.ARROW_R
 import cn.elytra.translatools.internal.Symbols.ARROW_RET
-import cn.elytra.translatools.internal.Symbols.DIAMOND_V
 import cn.elytra.translatools.internal.Symbols.NO
 import cn.elytra.translatools.internal.Symbols.TRI_R
 import cn.elytra.translatools.internal.Symbols.TRI_RH
-import cn.elytra.translatools.internal.forEachDecomposited
-import cn.elytra.translatools.internal.forEachDecompositedSuspend
 import cn.elytra.translatools.internal.platform.Paratranz
 import cn.elytra.translatools.internal.platform.toTranslationItem
 import cn.elytra.translatools.internal.utils.Checksum.md5String
@@ -25,12 +24,16 @@ import cn.elytra.translatools.internal.utils.decodeFromStringFromPath
 import cn.elytra.translatools.internal.utils.encodeToStringToPath
 import cn.elytra.translatools.internal.utils.forEachCoroutineScope
 import io.ktor.client.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.nio.file.FileSystems
 import java.nio.file.Path
 import kotlin.io.path.*
+import kotlin.sequences.onEach
 
 public class Project(
     public val config: ProjectConfig,
@@ -96,11 +99,6 @@ public class Project(
         }
     }
 
-    /**
-     * Walk the paths in the sources that are matching the glob of the handler.
-     */
-    private fun FileHandler.asSequence(): Sequence<@PathMarker.Absolute Path> = glob.asSequence().flatMap { resolveGlob(it) }
-
     private fun loadIndex() {
         if (indexPath.exists()) {
             index = json.decodeFromStringFromPath(indexPath)
@@ -164,9 +162,11 @@ public class Project(
             fileHandler.glob.forEach { console.info { "$TRI_RH $it" } }
             val handler = fileHandler.uses
             var anyMatched = false
-            fileHandler
+            handler
+                .get()
+                .extractEntries(fileHandler.asExtractContext())
+                .map { (path, _) -> path.absolute to path.relative }
                 .asSequence()
-                .associateWith { it.relativeTo(sourcesDirectory) }
                 .onEach { (absolute, relative) ->
                     anyMatched = true
                     // update missing paths
@@ -203,7 +203,7 @@ public class Project(
             if (!anyMatched) {
                 console.warn {
                     val globString = fileHandler.glob.joinToString(", ", "[", "]")
-                    "$TRI_RH ${fileHandler.uses} $globString doesn't match anything"
+                    "$TRI_RH ${fileHandler.uses.name} $globString doesn't match anything"
                 }
             }
         }
@@ -223,29 +223,39 @@ public class Project(
         val remote = paratranz.getFileList(projectId)
         val storage = RemoteAssociatedIndexedFileStorage(index, remote)
 
-        val allStatus = storage.allByStatus()
+        config.handlers.forEachIndexed { fileHandlerIndex, fileHandler ->
+            console.info { "$TRI_R ${fileHandler.uses.name} (#$fileHandlerIndex)" }
+            val handler = fileHandler.uses.get()
 
-        allStatus[Status.MODIFIED]?.forEachDecomposited { path, local, remote ->
-            checkNotNull(local)
-            checkNotNull(remote)
-            console.info {
-                "(*) $path modified (remote ${remote.hash} ≠ local ${local.lastUploadHash}) last updated at ${remote.updatedAt}"
-            }
-        }
+            handler.extractAndEncodeToJson(fileHandler.asExtractContext()).forEach { (path, _) ->
+                val status = storage.getStatus(path.relative)
+                val local = storage.getLocal(path.relative)
+                val remote = storage.getRemote(path.relative)
 
-        allStatus[Status.LOCAL_MISSING]?.forEachDecomposited { path, _, remote ->
-            checkNotNull(remote)
-            console.info { "(-) $path deleted (remote ${remote.hash}) last updated at ${remote.updatedAt}" }
-        }
+                @Suppress("IntroduceWhenSubject")
+                when {
+                    status == Status.UNMODIFIED && showUnmodified -> {
+                        console.info { "(=) ${path.relative} unmodified" }
+                    }
 
-        allStatus[Status.REMOTE_MISSING]?.forEachDecomposited { path, local, _ ->
-            checkNotNull(local)
-            console.info { "(+) $path added" }
-        }
+                    status == Status.MODIFIED -> {
+                        checkNotNull(local)
+                        checkNotNull(remote)
 
-        if (showUnmodified) {
-            allStatus[Status.UNMODIFIED]?.forEachDecomposited { path, _, _ ->
-                console.info { "(=) $path unmodified" }
+                        console.info {
+                            "(*) ${path.relative} modified (remote ${remote.hash} ≠ last uploaded ${local.lastUploadHash}) last updated in remote at ${remote.updatedAt}"
+                        }
+                    }
+
+                    status == Status.LOCAL_MISSING -> {
+                        console.info { "(+) ${path.relative} added" }
+                    }
+
+                    status == Status.REMOTE_MISSING -> {
+                        checkNotNull(remote)
+                        console.info { "(-) ${path.relative} deleted (remote ${remote.hash}) last updated at ${remote.updatedAt}" }
+                    }
+                }
             }
         }
     }
@@ -262,7 +272,6 @@ public class Project(
         val projectId = paratranzProjectId()
 
         val storage = RemoteAssociatedIndexedFileStorage(index, paratranz.getFileList(projectId).removeJsonExtension())
-        val allStatus = storage.allByStatus()
 
         /**
          * Run only if not [dryRun] and catches fire!
@@ -277,78 +286,78 @@ public class Project(
             }
         }
 
-        // update existing in both
-        val toUpdate = allStatus[Status.MODIFIED] + allStatus[Status.UNMODIFIED].takeIf { forceUpdate }
-        console.info { "$TRI_R Updating existing paths (${toUpdate?.size ?: 0})" }
-        toUpdate?.forEachDecompositedSuspend { path, local, remote ->
-            checkNotNull(local)
-            checkNotNull(remote)
+        config.handlers.forEachIndexed { fileHandlerIndex, fileHandler ->
+            console.info { "$TRI_R ${fileHandler.uses.name} (#$fileHandlerIndex)" }
+            val handler = fileHandler.uses.get()
 
-            val data =
-                try {
-                    val translation = local.getTranslationItems()
-                    Json.encodeToString(translation)
-                } catch (e: Exception) {
-                    console.warn(e) { "$NO Failed to generate translation data for path $path" }
-                    return@forEachDecompositedSuspend
-                }
-            if (dryRunHandler) {
-                console.info { data }
-                return@forEachDecompositedSuspend
-            }
+            val extractAndEncodeToJson = handler.extractAndEncodeToJson(fileHandler.asExtractContext())
+            extractAndEncodeToJson.forEachCoroutineScope forPaths@{ (path, provider) ->
+                val status = storage.getStatus(path.relative)
+                val local = storage.getLocal(path.relative)
+                val remote = storage.getRemote(path.relative)
+                when {
+                    status == Status.MODIFIED || (status == Status.UNMODIFIED && forceUpdate) -> {
+                        checkNotNull(local)
+                        checkNotNull(remote)
 
-            console.info { "$ARROW_R $path" }
-            wetRun {
-                val localHash = md5String(data)
-                val response = paratranz.updateFile(projectId, remote.id, data, path.name.appendJsonExtension())
-                // update index
-                if (response is Paratranz.FileUpdateResponse.Uploaded) {
-                    if (checkHash) checkHash(path, localHash, response.data.file.hash)
-                    local.lastUploadHash = response.data.file.hash
-                } else {
-                    console.info { "$ARROW_RET $path doesn't have content update" }
-                }
-            }
-        }
-        // upload new
-        val toUpload = allStatus[Status.REMOTE_MISSING]
-        console.info { "$TRI_R Uploading new paths (${toUpload?.size ?: 0})" }
-        toUpload?.forEachDecompositedSuspend { path, local, _ ->
-            checkNotNull(local)
+                        console.info { "$ARROW_R Updating ${path.relative}" }
+                        val data = provider()
+                        if (dryRunHandler) {
+                            console.info { data }
+                            return@forPaths
+                        }
+                        wetRun {
+                            val localHash = md5String(data)
+                            val response =
+                                paratranz.updateFile(
+                                    projectId,
+                                    remote.id,
+                                    data,
+                                    path.relative.name.appendJsonExtension(),
+                                )
+                            if (response is Paratranz.FileUpdateResponse.Uploaded) {
+                                val remoteHash = response.data.file.hash
+                                if (checkHash) checkHash(path.relative, localHash, remoteHash)
+                                local.lastUploadHash = remoteHash
+                            } else {
+                                console.info { "$ARROW_RET ${path.relative} doesn't have content update" }
+                                // refresh the hash
+                                local.lastUploadHash = localHash
+                            }
+                        }
+                    }
 
-            val data =
-                try {
-                    val translation = local.getTranslationItems()
-                    Json.encodeToString(translation)
-                } catch (e: Exception) {
-                    console.warn(e) { "$NO Failed to generate translation data for path $path" }
-                    return@forEachDecompositedSuspend
-                }
-            if (dryRunHandler) {
-                console.info { data }
-                return@forEachDecompositedSuspend
-            }
+                    status == Status.REMOTE_MISSING -> {
+                        checkNotNull(local)
 
-            console.info { "$ARROW_R $path" }
-            wetRun {
-                val localHash = md5String(data)
-                val response = paratranz.uploadFile(projectId, data, path.appendJsonExtension())
-                if (checkHash) checkHash(path, localHash, response.file.hash)
-                // update index
-                local.lastUploadHash = response.file.hash
-            }
-        }
-        // delete removed
-        if (deleteUnindexedFiles) {
-            val toDelete = allStatus[Status.LOCAL_MISSING]
-            console.info { "$TRI_R Deleting removed paths (${toDelete?.size ?: 0})" }
-            toDelete?.forEachDecompositedSuspend { path, _, remote ->
-                checkNotNull(remote)
+                        console.info { "$ARROW_R Uploading ${path.relative}" }
+                        val data = provider()
+                        if (dryRunHandler) {
+                            console.info { data }
+                            return@forPaths
+                        }
+                        wetRun {
+                            val localHash = md5String(data)
+                            val response =
+                                paratranz.uploadFile(
+                                    projectId,
+                                    data,
+                                    path.relative.appendJsonExtension(),
+                                )
+                            val remoteHash = response.file.hash
+                            if (checkHash) checkHash(path.relative, localHash, remoteHash)
+                            local.lastUploadHash = remoteHash
+                        }
+                    }
 
-                console.info { "$ARROW_R $path" }
-                wetRun {
-                    paratranz.deleteFile(projectId, remote.id)
-                    // nothing to update in index
+                    status == Status.LOCAL_MISSING && deleteUnindexedFiles -> {
+                        checkNotNull(remote)
+
+                        console.info { "$ARROW_R Deleting ${path.relative}" }
+                        wetRun {
+                            paratranz.deleteFile(projectId, remote.id)
+                        }
+                    }
                 }
             }
         }
@@ -369,32 +378,33 @@ public class Project(
 
         val storage = RemoteAssociatedIndexedFileStorage(index, paratranz.getFileList(projectId).removeJsonExtension())
 
-        index.forEachCoroutineScope { local ->
-            val path = local.path
-            val remote =
-                storage.getRemote(path)
-                    ?: return@forEachCoroutineScope console.warn { "$NO $path is missing in remote, skipped" }
+        config.handlers.forEachIndexed { fileHandlerIndex, fileHandler ->
+            console.info { "$TRI_R ${fileHandler.uses.name} (#$fileHandlerIndex)" }
+            val handler = fileHandler.uses.get()
 
-            val translation =
-                try {
-                    paratranz
-                        .getFileTranslation(projectId, remote.id)
-                        .filter(translationPredicate)
-                        .map { it.toTranslationItem() }
-                } catch (e: Exception) {
-                    console.warn(e) { "$NO $path translation can't be acquired" }
-                    return@forEachCoroutineScope
-                }
-
-            context(output) {
-                try {
-                    val handler = local.handler.get()
-                    handler.assembleTranslated(sourcesDirectory, path, translation)
-                    console.info { "$DIAMOND_V $path assembled" }
-                } catch (e: Exception) {
-                    console.warn(e) { "$NO Failed to assemble $path" }
-                }
-            }
+            val entries =
+                index
+                    .filter { it.handler == fileHandler.uses }
+                    .associateBy { ProjectPath(sourcesDirectory / it.path, it.path) }
+                    .mapValuesSuspend mapValues@{ (path, _) ->
+                        val remote =
+                            storage.getRemote(path.relative)
+                                ?: let {
+                                    console.warn { "$NO ${path.relative} is missing in remote, skipped" }
+                                    return@mapValues emptyList()
+                                }
+                        try {
+                            paratranz
+                                .getFileTranslation(projectId, remote.id)
+                                .filter(translationPredicate)
+                                .map { it.toTranslationItem() }
+                        } catch (e: Exception) {
+                            console.warn(e) { "$NO ${path.relative} translation can't be acquired" }
+                            return@mapValues emptyList()
+                        }
+                    }
+            val context = InsertContext(this, entries)
+            handler.insertEntries(context, output)
         }
     }
 }
@@ -415,13 +425,6 @@ public data class IndexedFile(
     var lastIndexHash: String,
     var lastUploadHash: String? = null,
 )
-
-context(project: Project)
-public fun IndexedFile.hashMD5(): String = md5String(project.sourcesDirectory / path)
-
-context(project: Project)
-public fun IndexedFile.getTranslationItems(): List<TranslationItem> =
-    handler.get().extractUntranslated(project.sourcesDirectory / this.path)
 
 private operator fun <K, V> Map<K, V>?.plus(other: Map<K, V>?): Map<K, V>? {
     if (this == null) return other
@@ -446,3 +449,10 @@ private fun checkHash(
 ) {
     if (localHash != remoteHash) throw UploadHashMismatchException(path, localHash, remoteHash)
 }
+
+private suspend inline fun <K, V, R> Map<out K, V>.mapValuesSuspend(crossinline transform: suspend (Map.Entry<K, V>) -> R): Map<K, R> =
+    coroutineScope {
+        map { entry ->
+            async { entry.key to transform(entry) }
+        }.awaitAll().toMap()
+    }

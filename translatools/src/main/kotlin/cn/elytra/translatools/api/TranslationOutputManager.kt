@@ -1,4 +1,4 @@
-package cn.elytra.translatools.api.handler
+package cn.elytra.translatools.api
 
 import cn.elytra.translatools.api.annotation.PathMarker.Relative
 import cn.elytra.translatools.internal.SharedObjects
