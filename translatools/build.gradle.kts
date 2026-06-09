@@ -1,7 +1,8 @@
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
-    id("standalone")
+    alias(libs.plugins.shadow)
+    id("com.github.taskeren.standalone") version "544245ee43"
 }
 
 repositories {
@@ -55,6 +56,6 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-tasks.standaloneJar.configure {
+standalone {
     mainClass = "cn.elytra.translatools.MainKt"
 }

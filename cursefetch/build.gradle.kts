@@ -3,7 +3,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
-    id("com.gradleup.shadow")
+    alias(libs.plugins.shadow)
 }
 
 repositories {
